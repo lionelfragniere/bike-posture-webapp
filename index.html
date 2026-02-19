@@ -48,7 +48,7 @@
   <div class="grid">
     <div class="panel">
       <div class="row">
-        <label><b>1) Upload side-view video:</b></label>
+        <label id="tUploadLabel"><b>1) Upload side-view video:</b></label>
         <input id="file" type="file" accept="video/*"/>
         <span id="vidInfo" class="pill">No video</span>
       </div>
@@ -66,10 +66,10 @@
       </div>
 
       <div class="row" style="margin-top:8px;">
-        <label class="muted"><input id="chkOverlay" type="checkbox"/> Show skeleton + measurements during playback</label>
+        <label class="muted" id="tShowOverlay"><input id="chkOverlay" type="checkbox"/> Show skeleton + measurements during playback</label>
       </div>
 
-      <p class="small">
+      <p class="small" id="tTips">
         Tips: true side view, full body visible, stable camera, 20–40s clip. Best compatibility: MP4 (H.264).
       </p>
     </div>
@@ -84,8 +84,8 @@
 
 
       <hr/>
-      <div class="metric"><b>2) Calibration (mm):</b></div>
-      <div class="muted">Click 2 points on the calibration frame below (e.g., wheel diameter endpoints), then enter the real distance in mm.</div>
+      <div class="metric" id="tCalibTitle"><b>2) Calibration (mm):</b></div>
+      <div class="muted" id="tCalibHelp">Click 2 points on the calibration frame below (e.g., wheel diameter endpoints), then enter the real distance in mm.</div>
       <div class="row">
         <label id="tPreset">Preset:</label>
         <select id="preset" style="padding:6px 8px; border-radius:10px; border:1px solid #ccc;">
@@ -116,27 +116,32 @@
         <input id="crankMm" type="number" min="120" max="220" step="0.5" placeholder="e.g., 172.5"/>
       </div>
       <div class="row">
+        <label id="tInseam">Inseam (cm):</label>
+        <input id="inseamCm" type="number" min="40" max="110" step="0.5" placeholder="e.g., 82"/>
+      </div>
+      <div class="metric muted" id="crankFit"></div>
+      <div class="row">
         <button id="btnPick" disabled>Pick 2 points</button>
         <button id="btnClearPts" disabled>Clear points</button>
       </div>
       <div class="row">
-        <label>Real distance (mm):</label>
+        <label id="tRealDist">Real distance (mm):</label>
         <input id="realMm" type="number" min="1" step="1" placeholder="e.g., 670"/>
         <button id="btnSetScale" disabled>Set scale</button>
       </div>
-      <div class="metric">Pixels distance: <span class="k" id="pxDist">—</span></div>
-      <div class="metric">Scale: <span class="k" id="scale">—</span> <span class="muted">(px per mm)</span></div>
+      <div class="metric"><span id="tPxDistLabel">Pixels distance:</span> <span class="k" id="pxDist">—</span></div>
+      <div class="metric"><span id="tScaleLabel">Scale:</span> <span class="k" id="scale">—</span> <span class="muted">(px per mm)</span></div>
 
       <hr/>
-      <div class="metric"><b>3) Results:</b></div>
-      <div class="metric"><b>Threshold legend (starter):</b></div>
+      <div class="metric" id="tResultsTitle"><b>3) Results:</b></div>
+      <div class="metric" id="tLegendTitle"><b>Threshold legend (starter):</b></div>
       <div id="legend" class="muted"></div>
       <div id="results" class="muted">Run analysis to see angles + suggestions.</div>
 
       <hr/>
-      <div class="metric"><b>Export:</b></div>
+      <div class="metric" id="tExportTitle"><b>Export:</b></div>
       <button id="btnCopy" disabled>Copy report to clipboard</button>
-      <div class="small muted">Nothing is uploaded anywhere in this MVP.</div>
+      <div class="small muted" id="tPrivacy">Nothing is uploaded anywhere in this MVP.</div>
     </div>
   </div>
 
