@@ -3,7 +3,7 @@
 - Entire rider visible (shoulders to ankles)
 - Good lighting, stable camera
 - 20–40 seconds of steady pedalling is enough
-- Indoor trainer is best
+- Indoor trainer is best, but you can also "backpedal"
 
 ## Calibration (how mm works)
 To convert pixels to millimetres, you:
