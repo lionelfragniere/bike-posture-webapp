@@ -1,3 +1,5 @@
+https://lionelfragniere.github.io/bike-posture-webapp/
+
 ## Recording tips (for best results)
 - **True side view** (camera perpendicular to bike)
 - Entire rider visible (shoulders to ankles)
