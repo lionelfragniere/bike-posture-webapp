@@ -36,6 +36,7 @@
     .rlist { margin: 6px 0 0 18px; }
 
   </style>
+  <link rel="icon" href="data:,">
 </head>
 <body>
   <div class="row" style="justify-content:space-between; align-items:flex-start;">
@@ -44,7 +45,7 @@
       <div class="sub" id="tSub">Analyse la posture localement dans ton navigateur. Calibre avec une mesure visible dans la vidéo (sans cibles imprimées).</div>
     </div>
     <div class="row">
-      <label id="tLangLabel" for="langSel">Langue:</label>
+      <label id="tLangLabel" for="langSel">Langue: <span id="versionTag" style="margin-left:8px; font-size:12px; opacity:0.8;"></span></label>
       <select id="langSel">
         <option value="fr" selected>Français</option>
         <option value="en">English</option>

@@ -53,6 +53,7 @@ const langSel = el("langSel");
 // ---------- i18n ----------
 const I18N = {
   fr: {
+
     title: "Bike Posture Checker (Route) — Import vidéo",
     sub: "Analyse la posture localement dans ton navigateur. Calibre avec une mesure visible dans la vidéo (sans cibles imprimées).",
     lang: "Langue:",
@@ -96,12 +97,12 @@ const I18N = {
     crankHeuristicTitle: "Manivelles (heuristique):",
     crankTooLong: "Possiblement trop longues (genou très fermé en haut de pédale). Vérifie d’abord hauteur/avancée de selle.",
     crankTooShort: "Possiblement trop courtes (genou très ouvert en haut de pédale). Vérifie d’abord hauteur/avancée de selle.",
-    crankOK: "Rien d’évident (dans les limites de l’heuristique).",
     crankOk: "Rien d’évident (dans les limites de l’heuristique).",
     framesSampled: "Images échantillonnées",
-
+    consoleTitle: "Console :",
   },
   en: {
+
     title: "Bike Posture Checker (Road Fit) — Video Upload",
     sub: "Runs locally in your browser. Calibrate using a known measurement visible in the video (no printed targets).",
     lang: "Language:",
@@ -145,9 +146,11 @@ const I18N = {
     crankHeuristicTitle: "Crank length (heuristic):",
     crankTooLong: "Possibly too long (very closed knee at top of stroke). Check saddle height/fore-aft first.",
     crankTooShort: "Possibly too short (very open knee at top of stroke). Check saddle height/fore-aft first.",
-    crankOK: "${t("crankOk")}",
+    consoleTitle: "Console:",
   }
 };
+
+const APP_VERSION = "v14.0.0";
 
 let LANG = "fr";
 function t(key, ...args) {
@@ -157,6 +160,10 @@ function t(key, ...args) {
 
 function applyI18n() {
   el("tTitle").textContent = t("title");
+  const c = document.getElementById("tConsole");
+  if (c) c.textContent = t("consoleTitle");
+  const vt = document.getElementById("versionTag");
+  if (vt) vt.textContent = APP_VERSION;
   el("tSub").textContent = t("sub");
   el("tLangLabel").textContent = t("lang");
   el("tUploadLabel").textContent = t("uploadLabel");
@@ -186,6 +193,22 @@ function applyI18n() {
   if (!fileEl.files?.[0]) vidInfo.textContent = t("noVideo");
   renderLegend();
 }
+
+function uiLog(msg, level="info") {
+  const box = document.getElementById("uiConsole");
+  const ts = new Date().toLocaleTimeString();
+  const line = `[${ts}] ${level.toUpperCase()}: ${msg}`;
+  if (box) {
+    box.value += (box.value ? "
+" : "") + line;
+    box.scrollTop = box.scrollHeight;
+  }
+  // also keep normal console
+  if (level === "error") console.error(msg);
+  else if (level === "warn") console.warn(msg);
+  else console.log(msg);
+}
+
 
 // ---------- UI safety: always bind the file handler early ----------
 fileEl.addEventListener("change", () => {
@@ -221,7 +244,8 @@ let bestFrameIdx = null; // max knee angle (extension)
 let analysisReportText = "";
 
 // ---------- utilities ----------
-function setStatus(msg) { statusEl.textContent = msg; }
+function setStatus(msg) {
+statusEl.textContent = msg; }
 
 function setStep(n, state) {
   const map = { todo: ["pill todo", t("pillTodo")], optional: ["pill todo", t("pillOptional")], done: ["pill done", t("pillDone")], warn: ["pill warn", t("pillWarn")] };
@@ -229,6 +253,7 @@ function setStep(n, state) {
   const target = n === 1 ? st1s : (n === 2 ? st2s : st3s);
   target.className = cls;
   target.textContent = txt;
+  uiLog(String(msg));
 }
 
 function clearOverlay() {
@@ -893,6 +918,7 @@ btnReset.addEventListener("click", () => {
 langSel.addEventListener("change", () => {
   LANG = langSel.value === "en" ? "en" : "fr";
   applyI18n();
+uiLog(`App loaded (${APP_VERSION})`);
 });
 
 // Initial setup
@@ -900,6 +926,7 @@ langSel.addEventListener("change", () => {
   try {
     LANG = (langSel.value === "en") ? "en" : "fr";
     applyI18n();
+uiLog(`App loaded (${APP_VERSION})`);
     setStatus(t("statusReady"));
     setStep(1, "todo");
     setStep(2, "optional");
