@@ -84,6 +84,21 @@ const st1 = el("st1"), st2 = el("st2"), st3 = el("st3");
 const st1s = el("st1s"), st2s = el("st2s"), st3s = el("st3s");
 const tPreset = el("tPreset");
 const tCrankLen = el("tCrankLen");
+const tUploadLabel = el("tUploadLabel");
+const tShowOverlay = el("tShowOverlay");
+const tTips = el("tTips");
+const tCalibTitle = el("tCalibTitle");
+const tCalibHelp = el("tCalibHelp");
+const tRealDist = el("tRealDist");
+const tPxDistLabel = el("tPxDistLabel");
+const tScaleLabel = el("tScaleLabel");
+const tResultsTitle = el("tResultsTitle");
+const tLegendTitle = el("tLegendTitle");
+const tExportTitle = el("tExportTitle");
+const tPrivacy = el("tPrivacy");
+const tInseam = el("tInseam");
+const inseamCmEl = el("inseamCm");
+const crankFitEl = el("crankFit");
 
 const crankPreset = el("crankPreset");
 const crankMmEl = el("crankMm");
@@ -101,6 +116,33 @@ const I18N = {
     done: "ok",
     preset: "Préréglage:",
     crank: "Longueur de manivelle:",
+
+    uploadLabel: "1) Importer une vidéo de profil :",
+    btnLoad: "Charger",
+    btnGrab: "Capturer image d’étalonnage",
+    btnAnalyze: "Analyser la vidéo",
+    btnReset: "Réinitialiser",
+    showOverlay: "Afficher squelette + mesures pendant la lecture",
+    tips: "Conseils : vue strictement de profil, corps entier visible, caméra stable, clip 20–40 s. Compatibilité : MP4 (H.264).",
+    calibTitle: "2) Étalonnage (mm) :",
+    calibHelp: "Clique 2 points sur une image (ex. extrémités du diamètre de la roue), puis saisis la distance réelle en mm.",
+    pick2: "Choisir 2 points",
+    clearPts: "Effacer points",
+    realDist: "Distance réelle (mm) :",
+    setScale: "Définir l’échelle",
+    pxDist: "Distance en pixels :",
+    scaleLbl: "Échelle :",
+    resultsTitle: "3) Résultats :",
+    legendTitle: "Seuils (référence) :",
+    exportTitle: "Exporter :",
+    copyReport: "Copier le rapport",
+    privacy: "Aucune donnée n’est envoyée (tout reste local dans ce MVP).",
+    inseam: "Entrejambe (cm) :",
+    crankFitNA: "Conseil manivelle : saisis ton entrejambe (cm) pour une recommandation.",
+    crankFitOk: "Conseil manivelle : recommandé ≈ <span class=\"k\">${rec} mm</span> (plage ~ ${lo}–${hi} mm). Ta valeur <span class=\"k\">${cr} mm</span> semble cohérente.",
+    crankFitShort: "Conseil manivelle : recommandé ≈ <span class=\"k\">${rec} mm</span> (plage ~ ${lo}–${hi} mm). Ta valeur <span class=\"k\">${cr} mm</span> paraît plutôt courte.",
+    crankFitLong: "Conseil manivelle : recommandé ≈ <span class=\"k\">${rec} mm</span> (plage ~ ${lo}–${hi} mm). Ta valeur <span class=\"k\">${cr} mm</span> paraît plutôt longue."
+
     statusIdle: "Inactif",
     statusLoaded: "Vidéo chargée.",
     statusCalibGrabbed: "Image d’étalonnage capturée (pause).",
@@ -119,6 +161,33 @@ const I18N = {
     done: "done",
     preset: "Preset:",
     crank: "Crank length:",
+
+    uploadLabel: "1) Upload side-view video:",
+    btnLoad: "Load",
+    btnGrab: "Grab calibration frame",
+    btnAnalyze: "Analyze video",
+    btnReset: "Reset",
+    showOverlay: "Show skeleton + measurements during playback",
+    tips: "Tips: true side view, full body visible, stable camera, 20–40s clip. Best compatibility: MP4 (H.264).",
+    calibTitle: "2) Calibration (mm):",
+    calibHelp: "Click 2 points on a frame (e.g., wheel diameter endpoints), then enter the real distance in mm.",
+    pick2: "Pick 2 points",
+    clearPts: "Clear points",
+    realDist: "Real distance (mm):",
+    setScale: "Set scale",
+    pxDist: "Pixels distance:",
+    scaleLbl: "Scale:",
+    resultsTitle: "3) Results:",
+    legendTitle: "Threshold legend (starter):",
+    exportTitle: "Export:",
+    copyReport: "Copy report",
+    privacy: "Nothing is uploaded anywhere in this MVP (local-only).",
+    inseam: "Inseam (cm):",
+    crankFitNA: "Crank guidance: enter your inseam (cm) for a recommendation.",
+    crankFitOk: "Crank guidance: recommended ≈ <span class=\"k\">${rec} mm</span> (range ~ ${lo}–${hi} mm). Your <span class=\"k\">${cr} mm</span> looks consistent.",
+    crankFitShort: "Crank guidance: recommended ≈ <span class=\"k\">${rec} mm</span> (range ~ ${lo}–${hi} mm). Your <span class=\"k\">${cr} mm</span> may be on the short side.",
+    crankFitLong: "Crank guidance: recommended ≈ <span class=\"k\">${rec} mm</span> (range ~ ${lo}–${hi} mm). Your <span class=\"k\">${cr} mm</span> may be on the long side."
+
     statusIdle: "Idle",
     statusLoaded: "Video loaded.",
     statusCalibGrabbed: "Calibration frame grabbed (paused).",
@@ -135,14 +204,39 @@ function applyLang(lang){
   if (tTitle) tTitle.textContent = tr("title");
   if (tSub) tSub.textContent = tr("sub");
   if (tLangLabel) tLangLabel.textContent = tr("lang");
+
+  if (tUploadLabel) tUploadLabel.innerHTML = `<b>${tr("uploadLabel")}</b>`;
+  if (btnLoad) btnLoad.textContent = tr("btnLoad");
+  if (btnGrab) btnGrab.textContent = tr("btnGrab");
+  if (btnAnalyze) btnAnalyze.textContent = tr("btnAnalyze");
+  if (btnReset) btnReset.textContent = tr("btnReset");
+  if (tShowOverlay) tShowOverlay.lastChild && (tShowOverlay.lastChild.textContent = " " + tr("showOverlay"));
+  if (tTips) tTips.textContent = tr("tips");
+
   if (tStep1) tStep1.textContent = tr("step1");
   if (tStep2) tStep2.textContent = tr("step2");
   if (tStep3) tStep3.textContent = tr("step3");
   if (st1s) st1s.textContent = tr("pending");
   if (st2s) st2s.textContent = tr("optional");
   if (st3s) st3s.textContent = tr("pending");
+
+  if (tCalibTitle) tCalibTitle.innerHTML = `<b>${tr("calibTitle")}</b>`;
+  if (tCalibHelp) tCalibHelp.textContent = tr("calibHelp");
+  if (btnPick) btnPick.textContent = tr("pick2");
+  if (btnClearPts) btnClearPts.textContent = tr("clearPts");
+  if (tRealDist) tRealDist.textContent = tr("realDist");
+  if (btnSetScale) btnSetScale.textContent = tr("setScale");
+  if (tPxDistLabel) tPxDistLabel.textContent = tr("pxDist");
+  if (tScaleLabel) tScaleLabel.textContent = tr("scaleLbl");
+  if (tResultsTitle) tResultsTitle.innerHTML = `<b>${tr("resultsTitle")}</b>`;
+  if (tLegendTitle) tLegendTitle.innerHTML = `<b>${tr("legendTitle")}</b>`;
+  if (tExportTitle) tExportTitle.innerHTML = `<b>${tr("exportTitle")}</b>`;
+  if (btnCopy) btnCopy.textContent = tr("copyReport");
+  if (tPrivacy) tPrivacy.textContent = tr("privacy");
+
   if (tPreset) tPreset.textContent = tr("preset");
   if (tCrankLen) tCrankLen.textContent = tr("crank");
+  if (tInseam) tInseam.textContent = tr("inseam");
 }
 if (langSel){
   langSel.addEventListener("change", () => applyLang(langSel.value));
@@ -172,6 +266,37 @@ if (crankPreset && crankMmEl){
     if (crankPreset.value) crankMmEl.value = crankPreset.value;
   });
 }
+
+function updateCrankFit(){
+  if (!crankFitEl) return;
+  const inseamCm = inseamCmEl && inseamCmEl.value ? parseFloat(inseamCmEl.value) : null;
+  const cr = crankMmEl && crankMmEl.value ? parseFloat(crankMmEl.value) : null;
+  if (!inseamCm || !isFinite(inseamCm)){
+    crankFitEl.innerHTML = tr("crankFitNA");
+    return;
+  }
+  const inseamMm = inseamCm * 10.0;
+  // Heuristic: recommended crank length ~ 0.216 × inseam (mm). This is a rough starting point only.
+  const rec = Math.round(inseamMm * 0.216);
+  const lo = rec - 5;
+  const hi = rec + 5;
+  if (!cr || !isFinite(cr)){
+    crankFitEl.innerHTML = tr("crankFitNA").replace("inseam", "inseam"); // keep message
+    return;
+  }
+  let key = "crankFitOk";
+  if (cr < lo) key = "crankFitShort";
+  if (cr > hi) key = "crankFitLong";
+  crankFitEl.innerHTML = tr(key)
+    .replace("${rec}", rec)
+    .replace("${lo}", lo)
+    .replace("${hi}", hi)
+    .replace("${cr}", cr);
+}
+
+if (inseamCmEl) inseamCmEl.addEventListener("input", updateCrankFit);
+if (crankMmEl) crankMmEl.addEventListener("input", updateCrankFit);
+updateCrankFit();
 let running = false;
 
 let videoUrl = null;
@@ -793,6 +918,7 @@ btnAnalyze.addEventListener("click", async () => {
 
   // Collect per-frame measurements
   const frames = [];
+  const anklePts = [];
   let lastGood = null;
   let maxKneeFrame = null;
 
@@ -850,6 +976,9 @@ btnAnalyze.addEventListener("click", async () => {
     // For phase proxy: use ankle x in normalized coords
     const ankleX = ankle.x;
     const kneeX = knee.x;
+
+    // For optional crank sanity check: track ankle trajectory in overlay pixels
+    anklePts.push({ x: ankle.x * overlay.width, y: ankle.y * overlay.height });
 
     const frame = { t, side, vis, kneeAng, hipAng, elbowAng, torsoAng, ankleX, kneeX, lms };
     frames.push(frame);
