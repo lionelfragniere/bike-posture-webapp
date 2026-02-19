@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bike Posture Checker (Video Upload)</title>
+  <title>Bike Posture Checker (Road Fit)</title>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; color: #111; }
     h1 { font-size: 20px; margin: 0 0 8px; }
@@ -25,12 +25,25 @@
     hr { border: none; border-top: 1px solid #eee; margin: 10px 0; }
     .small { font-size: 12px; color: #666; }
     .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #f4f4f4; font-size: 12px; }
+    .step{display:flex;gap:8px;align-items:center;margin:6px 0;font-size:13px;color:#444;}
+    .step b{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:999px;background:#eee;color:#111;font-size:12px;}
+    .step.done b{background:#d7f5df;}
+    .step.active b{background:#e8e8ff;}
+    .step .txt{flex:1;}
     .k { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: #f6f6f6; padding: 2px 6px; border-radius: 8px;}
   </style>
 </head>
 <body>
-  <h1>Bike Posture Checker (Road Fit) — Video Upload</h1>
-  <p class="sub">Runs pose locally in your browser. Calibrate using a known measurement visible in the video (no printed targets).</p>
+  <h1 id="tTitle">Bike Posture Checker (Road Fit) — Video Upload</h1>
+  <p class="sub" id="tSub">Runs pose locally in your browser. Calibrate using a known measurement visible in the video (no printed targets).</p>
+
+  <div class="row" style="justify-content:flex-end; margin: 0 0 8px;">
+    <label class="muted" for="langSel" id="tLangLabel">Langue:</label>
+    <select id="langSel" style="padding:6px 8px; border-radius:10px; border:1px solid #ccc;">
+      <option value="fr" selected>Français</option>
+      <option value="en">English</option>
+    </select>
+  </div>
 
   <div class="grid">
     <div class="panel">
@@ -63,12 +76,18 @@
 
     <div class="panel">
       <div class="metric"><b>Status:</b> <span id="status">Idle</span></div>
+      <div id="stepper" style="margin-top:8px;">
+        <div class="step active" id="st1"><b>1</b><div class="txt" id="tStep1">Upload video</div><span class="pill" id="st1s">pending</span></div>
+        <div class="step" id="st2"><b>2</b><div class="txt" id="tStep2">Calibration (optional)</div><span class="pill" id="st2s">optional</span></div>
+        <div class="step" id="st3"><b>3</b><div class="txt" id="tStep3">Analyze</div><span class="pill" id="st3s">pending</span></div>
+      </div>
+
 
       <hr/>
       <div class="metric"><b>2) Calibration (mm):</b></div>
       <div class="muted">Click 2 points on the calibration frame below (e.g., wheel diameter endpoints), then enter the real distance in mm.</div>
       <div class="row">
-        <label>Preset:</label>
+        <label id="tPreset">Preset:</label>
         <select id="preset" style="padding:6px 8px; border-radius:10px; border:1px solid #ccc;">
           <option value="">— choose —</option>
           <optgroup label="Wheel outer diameter (approx)">
@@ -84,6 +103,17 @@
             <option value="175">Crank 175 mm</option>
           </optgroup>
         </select>
+      </div>
+      <div class="row">
+        <label id="tCrankLen">Crank length:</label>
+        <select id="crankPreset" style="padding:6px 8px; border-radius:10px; border:1px solid #ccc;">
+          <option value="">—</option>
+          <option value="165">165 mm</option>
+          <option value="170">170 mm</option>
+          <option value="172.5">172.5 mm</option>
+          <option value="175">175 mm</option>
+        </select>
+        <input id="crankMm" type="number" min="120" max="220" step="0.5" placeholder="e.g., 172.5"/>
       </div>
       <div class="row">
         <button id="btnPick" disabled>Pick 2 points</button>

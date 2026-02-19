@@ -71,6 +71,107 @@ const chkOverlay = el("chkOverlay");
 const legendEl = el("legend");
 
 let poseLandmarker = null;
+
+// Language (FR default) — lightweight i18n
+const langSel = el("langSel");
+const tTitle = el("tTitle");
+const tSub = el("tSub");
+const tLangLabel = el("tLangLabel");
+const tStep1 = el("tStep1");
+const tStep2 = el("tStep2");
+const tStep3 = el("tStep3");
+const st1 = el("st1"), st2 = el("st2"), st3 = el("st3");
+const st1s = el("st1s"), st2s = el("st2s"), st3s = el("st3s");
+const tPreset = el("tPreset");
+const tCrankLen = el("tCrankLen");
+
+const crankPreset = el("crankPreset");
+const crankMmEl = el("crankMm");
+
+const I18N = {
+  fr: {
+    title: "Bike Posture Checker (Route) — Import vidéo",
+    sub: "Analyse la posture localement dans ton navigateur. Calibre avec une mesure visible dans la vidéo (sans cibles imprimées).",
+    lang: "Langue:",
+    step1: "Importer la vidéo",
+    step2: "Étalonnage (optionnel)",
+    step3: "Analyser",
+    pending: "en attente",
+    optional: "optionnel",
+    done: "ok",
+    preset: "Préréglage:",
+    crank: "Longueur de manivelle:",
+    statusIdle: "Inactif",
+    statusLoaded: "Vidéo chargée.",
+    statusCalibGrabbed: "Image d’étalonnage capturée (pause).",
+    statusAnalyzing: "Analyse… (échantillonnage des images)",
+    statusDone: "Analyse terminée."
+  },
+  en: {
+    title: "Bike Posture Checker (Road Fit) — Video Upload",
+    sub: "Runs pose locally in your browser. Calibrate using a known measurement visible in the video (no printed targets).",
+    lang: "Language:",
+    step1: "Upload video",
+    step2: "Calibration (optional)",
+    step3: "Analyze",
+    pending: "pending",
+    optional: "optional",
+    done: "done",
+    preset: "Preset:",
+    crank: "Crank length:",
+    statusIdle: "Idle",
+    statusLoaded: "Video loaded.",
+    statusCalibGrabbed: "Calibration frame grabbed (paused).",
+    statusAnalyzing: "Analyzing… (sampling frames)",
+    statusDone: "Analysis completed."
+  }
+};
+
+let currentLang = "fr";
+function tr(key){ return (I18N[currentLang] && I18N[currentLang][key]) || key; }
+function applyLang(lang){
+  currentLang = (lang === "en") ? "en" : "fr";
+  document.documentElement.lang = currentLang;
+  if (tTitle) tTitle.textContent = tr("title");
+  if (tSub) tSub.textContent = tr("sub");
+  if (tLangLabel) tLangLabel.textContent = tr("lang");
+  if (tStep1) tStep1.textContent = tr("step1");
+  if (tStep2) tStep2.textContent = tr("step2");
+  if (tStep3) tStep3.textContent = tr("step3");
+  if (st1s) st1s.textContent = tr("pending");
+  if (st2s) st2s.textContent = tr("optional");
+  if (st3s) st3s.textContent = tr("pending");
+  if (tPreset) tPreset.textContent = tr("preset");
+  if (tCrankLen) tCrankLen.textContent = tr("crank");
+}
+if (langSel){
+  langSel.addEventListener("change", () => applyLang(langSel.value));
+}
+applyLang(langSel?.value || "fr");
+
+// Stepper helper
+function setStep(step){
+  const mark = (el, state) => {
+    if (!el) return;
+    el.classList.remove("active","done");
+    if (state === "active") el.classList.add("active");
+    if (state === "done") el.classList.add("done");
+  };
+  if (step === 1){
+    mark(st1,"active"); mark(st2,null); mark(st3,null);
+  } else if (step === 2){
+    mark(st1,"done"); mark(st2,"active"); mark(st3,null);
+  } else if (step === 3){
+    mark(st1,"done"); mark(st2, scalePxPerMm ? "done" : null); mark(st3,"active");
+  } else if (step === 4){
+    mark(st1,"done"); mark(st2, scalePxPerMm ? "done" : null); mark(st3,"done");
+  }
+}
+if (crankPreset && crankMmEl){
+  crankPreset.addEventListener("change", () => {
+    if (crankPreset.value) crankMmEl.value = crankPreset.value;
+  });
+}
 let running = false;
 
 let videoUrl = null;
@@ -108,6 +209,60 @@ function pickSide(lms) {
 function getP(lms, name) {
   return lms?.[LM[name]] ?? null;
 }
+
+
+// ---- Geometry helpers ----
+function fitCircleKasa(points){
+  // points: [{x,y}] in pixels; returns {cx, cy, r} or null
+  if (!points || points.length < 12) return null;
+  // Solve x^2 + y^2 = a*x + b*y + c
+  let sumX=0,sumY=0,sumXX=0,sumYY=0,sumXY=0,sumZ=0,sumXZ=0,sumYZ=0;
+  const n=points.length;
+  for (const p of points){
+    const x=p.x, y=p.y;
+    const z = x*x + y*y;
+    sumX += x; sumY += y;
+    sumXX += x*x; sumYY += y*y; sumXY += x*y;
+    sumZ += z; sumXZ += x*z; sumYZ += y*z;
+  }
+  // Build normal equations for least squares:
+  // [sumXX sumXY sumX] [a] = [sumXZ]
+  // [sumXY sumYY sumY] [b] = [sumYZ]
+  // [sumX  sumY  n   ] [c] = [sumZ ]
+  const A = [
+    [sumXX, sumXY, sumX],
+    [sumXY, sumYY, sumY],
+    [sumX , sumY , n   ],
+  ];
+  const B = [sumXZ, sumYZ, sumZ];
+
+  function det3(m){
+    return m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1]) - m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0]) + m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+  }
+  const D = det3(A);
+  if (Math.abs(D) < 1e-9) return null;
+
+  function replaceCol(mat, col, vec){
+    const m = mat.map(r => r.slice());
+    for (let i=0;i<3;i++) m[i][col]=vec[i];
+    return m;
+  }
+  const Da = det3(replaceCol(A,0,B));
+  const Db = det3(replaceCol(A,1,B));
+  const Dc = det3(replaceCol(A,2,B));
+
+  const a = Da / D;
+  const b = Db / D;
+  const c = Dc / D;
+
+  const cx = a/2;
+  const cy = b/2;
+  const r2 = cx*cx + cy*cy + c;
+  if (r2 <= 0) return null;
+  return {cx, cy, r: Math.sqrt(r2)};
+}
+
+function fmtDeg(x){ return (x==null || !isFinite(x)) ? "—" : `${x.toFixed(1)}°`; }
 
 function angleABC(a, b, c) {
   const ba = { x: a.x - b.x, y: a.y - b.y };
@@ -401,6 +556,9 @@ btnLoad.addEventListener("click", async () => {
   video.src = videoUrl;
 
   setStatus("Loading video…");
+  if (st1s) st1s.textContent = tr("pending");
+  setStep(1);
+
   await new Promise((res) => {
     video.onloadedmetadata = () => res();
   });
@@ -413,7 +571,11 @@ btnLoad.addEventListener("click", async () => {
   syncOverlayCssSize();
 
   vidInfo.textContent = `Loaded • ${video.duration.toFixed(1)}s • ${video.videoWidth}×${video.videoHeight}`;
-  setStatus("Video loaded.");
+  setStatus(tr("statusLoaded"));
+  if (st1s) st1s.textContent = tr("done");
+  if (st3s) st3s.textContent = tr("pending");
+  setStep(2);
+
   drawFrame();
 
   enableControls();
@@ -437,7 +599,12 @@ btnReset.addEventListener("click", () => {
   scaleEl.textContent = "—";
   resultsEl.textContent = "Run analysis to see angles + suggestions.";
   vidInfo.textContent = "No video";
-  setStatus("Idle");
+  setStatus(tr("statusIdle"));
+  if (st1s) st1s.textContent = tr("pending");
+  if (st2s) st2s.textContent = tr("optional");
+  if (st3s) st3s.textContent = tr("pending");
+  setStep(1);
+
 
   btnLoad.disabled = !(fileEl.files?.[0]);
   btnGrab.disabled = true;
@@ -457,7 +624,10 @@ btnGrab.addEventListener("click", async () => {
   // Pause and draw current frame
   video.pause();
   drawFrame();
-  setStatus("Calibration frame grabbed (paused).");
+  setStatus(tr("statusCalibGrabbed"));
+  if (st2s) st2s.textContent = tr("done");
+  setStep(3);
+
 });
 
 btnPick.addEventListener("click", () => {
@@ -617,7 +787,7 @@ btnAnalyze.addEventListener("click", async () => {
   const maxSec = Math.min(video.duration, 90); // cap
   const startSec = 0.0;
 
-  setStatus("Analyzing… (sampling frames)");
+  setStatus(tr("statusAnalyzing"));
   resultsEl.innerHTML = `<div class="muted">Analyzing…</div>`;
   btnCopy.disabled = true;
 
@@ -686,7 +856,7 @@ btnAnalyze.addEventListener("click", async () => {
     // Live overlay while analyzing (skeleton + measures)
     if (total % 3 === 0) {
       drawFitOverlay(frame);
-      setStatus(`Analyzing… ${Math.min(100, Math.round((t/maxSec)*100))}%`);
+      setStatus(`${tr("statusAnalyzing")} ${Math.min(100, Math.round((t/maxSec)*100))}%`);
     }
     good += 1;
   }
@@ -697,6 +867,30 @@ btnAnalyze.addEventListener("click", async () => {
   drawFrame();
 
   const goodPct = total ? (100 * good / total) : 0;
+
+
+  // Crank length sanity check (needs mm scale + user crank length)
+  let crankCheckMsg = null;
+  const crankUser = crankMmEl && crankMmEl.value ? parseFloat(crankMmEl.value) : null;
+  if (pxPerMm && anklePts.length >= 24) {
+    const circ = fitCircleKasa(anklePts);
+    if (circ && isFinite(circ.r)) {
+      const ankleOrbitMm = circ.r / pxPerMm; // NOTE: ankle != pedal spindle; used as a sanity check only
+      if (crankUser && isFinite(crankUser)) {
+        const diff = Math.abs(ankleOrbitMm - crankUser);
+        if (diff > 25) {
+          crankCheckMsg = `Crank-length check: your input is <span class="k">${crankUser} mm</span>, but the estimated ankle-orbit radius is <span class="k">${Math.round(ankleOrbitMm)} mm</span>. That gap is large → calibration or side-view geometry may be off (or this estimator is noisy).`;
+        } else {
+          crankCheckMsg = `Crank-length check: input <span class="k">${crankUser} mm</span> vs estimated ankle-orbit radius <span class="k">${Math.round(ankleOrbitMm)} mm</span> (OK as a rough sanity check).`;
+        }
+      } else {
+        crankCheckMsg = `Crank-length check (optional): estimated ankle-orbit radius is <span class="k">${Math.round(ankleOrbitMm)} mm</span>. Enter your crank length to compare.`;
+      }
+    }
+  } else if (crankUser) {
+    crankCheckMsg = `Crank-length check: entered <span class="k">${crankUser} mm</span>, but no mm scale is set — cannot sanity-check.`;
+  }
+
 
   if (frames.length < 30) {
     setStatus("Not enough confident frames.");
@@ -811,6 +1005,10 @@ btnAnalyze.addEventListener("click", async () => {
 
   blocks.push(reportBlock("Concrete corrections (starter)", recLines));
 
+  if (crankCheckMsg) {
+    blocks.push(reportBlock("Crank-length sanity check", [crankCheckMsg]));
+  }
+
   if (warnings.length) {
     blocks.push(reportBlock("Warnings", warnings.map(w => `<span class="warn">${w}</span>`)));
   }
@@ -853,7 +1051,10 @@ btnAnalyze.addEventListener("click", async () => {
     console.warn("Overlay draw failed", e);
   }
 
-  setStatus("Done.");
+  setStatus(tr("statusDone"));
+  if (st3s) st3s.textContent = tr("done");
+  setStep(4);
+
   running = false;
 });
 
