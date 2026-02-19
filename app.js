@@ -368,6 +368,17 @@ function updateCalibButtons() {
   btnPick.disabled = !gotCalibFrame || calib.picking;
   btnClearPts.disabled = calib.pts.length === 0;
   btnSetScale.disabled = !(calib.pts.length === 2 && Number(realMmEl.value) > 0);
+
+  // When picking calibration points, capture clicks on the overlay (and prevent accidental video play).
+  if (calib.picking) {
+    overlay.style.pointerEvents = "auto";
+    try { video.pause(); } catch (_) {}
+    video.controls = false;
+  } else {
+    overlay.style.pointerEvents = "none";
+    // restore controls only if a video is loaded (avoid showing disabled controls on blank)
+    video.controls = true;
+  }
 }
 
 btnPick.addEventListener("click", () => {
@@ -628,28 +639,73 @@ function percentile(arr, p) {
   return a[lo]*(1-t)+a[hi]*t;
 }
 
-function buildReport(summary) {
+function buildReportText(summary) {
+  const fr = (LANG === "fr");
+  const pct = (summary.good/Math.max(1,summary.sampled)*100);
   const lines = [];
-  lines.push(`Quality`);
-  lines.push(`Frames sampled: ${summary.sampled} • good: ${summary.good} (${(summary.good/summary.sampled*100).toFixed(1)}%)`);
-  lines.push(`Side used: auto (per frame best visibility)`);
-  lines.push(``);
-  lines.push(`Angles (road fit)`);
-  lines.push(`Knee angle @ BDC (estimated): ${summary.kneeBDC.toFixed(1)}° (target ~145°)`);
-  lines.push(`Hip angle (avg): ${summary.hipAvg.toFixed(1)}°`);
-  lines.push(`Torso angle (avg): ${summary.torsoAvg.toFixed(1)}°`);
-  lines.push(`Elbow angle (avg): ${summary.elbowAvg.toFixed(1)}°`);
-  lines.push(``);
-  lines.push(`${t("crankHeuristicTitle")} ${summary.crankText}`);
-  lines.push(``);
-  lines.push(`Concrete corrections (starter)`);
-  lines.push(summary.corrections.join("\n"));
-  if (!calib.pxPerMm) {
-    lines.push(``);
-    lines.push(`Warnings`);
-    lines.push(t("warnNoScale"));
+  if (fr) {
+    lines.push("Qualité");
+    lines.push(`Images échantillonnées : ${summary.sampled} • bonnes : ${summary.good} (${pct.toFixed(1)}%)`);
+    lines.push("Côté utilisé : auto (meilleure visibilité par image)");
+    lines.push("");
+    lines.push("Angles (road fit)");
+    lines.push(`Angle du genou @ PMB (estimé) : ${summary.kneeBDC.toFixed(1)}° (cible ~145°)`);
+    lines.push(`Angle de hanche (moy.) : ${summary.hipAvg.toFixed(1)}°`);
+    lines.push(`Angle du torse (moy.) : ${summary.torsoAvg.toFixed(1)}°`);
+    lines.push(`Angle du coude (moy.) : ${summary.elbowAvg.toFixed(1)}°`);
+    lines.push("");
+    lines.push(`Manivelles (heur.) : ${summary.crankText}`);
+    lines.push("");
+    lines.push("Corrections (starter)");
+    for (const c of summary.corrections) lines.push(`- ${c}`);
+  } else {
+    lines.push("Quality");
+    lines.push(`Frames sampled: ${summary.sampled} • good: ${summary.good} (${pct.toFixed(1)}%)`);
+    lines.push("Side used: auto (per-frame best visibility)");
+    lines.push("");
+    lines.push("Angles (road fit)");
+    lines.push(`Knee angle @ BDC (estimated): ${summary.kneeBDC.toFixed(1)}° (target ~145°)`);
+    lines.push(`Hip angle (avg): ${summary.hipAvg.toFixed(1)}°`);
+    lines.push(`Torso angle (avg): ${summary.torsoAvg.toFixed(1)}°`);
+    lines.push(`Elbow angle (avg): ${summary.elbowAvg.toFixed(1)}°`);
+    lines.push("");
+    lines.push(`Cranks (heur.): ${summary.crankText}`);
+    lines.push("");
+    lines.push("Concrete corrections (starter)");
+    for (const c of summary.corrections) lines.push(`- ${c}`);
   }
-  return lines.join("\n");
+  return lines.join("
+");
+}
+
+function buildReportHTML(summary) {
+  const fr = (LANG === "fr");
+  const pct = (summary.good/Math.max(1,summary.sampled)*100);
+  const rows = (label, value) => `<div class="rrow"><div class="rlabel">${label}</div><div class="rval">${value}</div></div>`;
+  const esc = (s) => String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+  const corrections = summary.corrections.map(c => `<li>${esc(c)}</li>`).join("");
+  const qualityTitle = fr ? "Qualité" : "Quality";
+  const anglesTitle = fr ? "Angles (road fit)" : "Angles (road fit)";
+  const crankTitle = fr ? "Manivelles (heuristique)" : "Cranks (heuristic)";
+  const corrTitle = fr ? "Corrections (starter)" : "Concrete corrections (starter)";
+  const sideTxt = fr ? "Auto (meilleure visibilité par image)" : "Auto (per-frame best visibility)";
+  return `
+    <div class="report">
+      <h3>${qualityTitle}</h3>
+      ${rows(fr ? "Images échantillonnées" : "Frames sampled", `${summary.sampled}`)}
+      ${rows(fr ? "Bonnes images" : "Good frames", `${summary.good} (${pct.toFixed(1)}%)`)}
+      ${rows(fr ? "Côté utilisé" : "Side used", sideTxt)}
+      <h3 style="margin-top:10px;">${anglesTitle}</h3>
+      ${rows(fr ? "Genou @ PMB (estimé)" : "Knee @ BDC (est.)", `${summary.kneeBDC.toFixed(1)}° (≈145°)`)}
+      ${rows(fr ? "Hanche (moy.)" : "Hip (avg)", `${summary.hipAvg.toFixed(1)}°`)}
+      ${rows(fr ? "Torse (moy.)" : "Torso (avg)", `${summary.torsoAvg.toFixed(1)}°`)}
+      ${rows(fr ? "Coude (moy.)" : "Elbow (avg)", `${summary.elbowAvg.toFixed(1)}°`)}
+      <h3 style="margin-top:10px;">${crankTitle}</h3>
+      <div class="small muted">${esc(summary.crankText)}</div>
+      <h3 style="margin-top:10px;">${corrTitle}</h3>
+      <ul class="rlist">${corrections || `<li>${fr ? "Aucune recommandation." : "No suggestions."}</li>`}</ul>
+    </div>
+  `;
 }
 
 function computeCorrections(summary) {
@@ -685,7 +741,7 @@ btnAnalyze.addEventListener("click", async () => {
     if (!validateVideoLoaded()) return;
 
     setStep(3, "todo");
-    resultsEl.textContent = "";
+    resultsEl.innerHTML = "";
     setStatus(t("statusAnalyzing", 0));
 
     const poseLandmarker = await ensureModel();
@@ -767,8 +823,8 @@ btnAnalyze.addEventListener("click", async () => {
       corrections: computeCorrections({kneeBDC, hipAvg, torsoAvg, elbowAvg}),
     };
 
-    analysisReportText = buildReport(summary);
-    resultsEl.textContent = analysisReportText;
+    analysisReportText = buildReportText(summary);
+    resultsEl.innerHTML = buildReportHTML(summary);
     btnCopy.disabled = !analysisReportText;
 
     setStatus(t("statusDone"));
@@ -815,7 +871,7 @@ btnReset.addEventListener("click", () => {
     analyzedFrames = [];
     bestFrameIdx = null;
     analysisReportText = "";
-    resultsEl.textContent = "";
+    resultsEl.innerHTML = "";
     btnCopy.disabled = true;
     gotCalibFrame = false;
     resetCalibration();
