@@ -97,6 +97,9 @@ const I18N = {
     crankTooLong: "Possiblement trop longues (genou très fermé en haut de pédale). Vérifie d’abord hauteur/avancée de selle.",
     crankTooShort: "Possiblement trop courtes (genou très ouvert en haut de pédale). Vérifie d’abord hauteur/avancée de selle.",
     crankOK: "Rien d’évident (dans les limites de l’heuristique).",
+    crankOk: "Rien d’évident (dans les limites de l’heuristique).",
+    framesSampled: "Images échantillonnées",
+
   },
   en: {
     title: "Bike Posture Checker (Road Fit) — Video Upload",
@@ -142,7 +145,7 @@ const I18N = {
     crankHeuristicTitle: "Crank length (heuristic):",
     crankTooLong: "Possibly too long (very closed knee at top of stroke). Check saddle height/fore-aft first.",
     crankTooShort: "Possibly too short (very open knee at top of stroke). Check saddle height/fore-aft first.",
-    crankOK: "Nothing obvious (within heuristic limits).",
+    crankOK: "${t("crankOk")}",
   }
 };
 
@@ -540,6 +543,9 @@ async function ensureModel() {
     baseOptions: {
       modelAssetPath:
         "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
+    crankOk: t("crankOk"),
+    framesSampled: t("framesSampled"),
+
     },
     runningMode: "VIDEO",
     numPoses: 1
@@ -660,7 +666,7 @@ function buildReportText(summary) {
     for (const c of summary.corrections) lines.push(`- ${c}`);
   } else {
     lines.push("Quality");
-    lines.push(`Frames sampled: ${summary.sampled} • good: ${summary.good} (${pct.toFixed(1)}%)`);
+    lines.push(`${t("framesSampled")}: ${summary.sampled} • good: ${summary.good} (${pct.toFixed(1)}%)`);
     lines.push("Side used: auto (per-frame best visibility)");
     lines.push("");
     lines.push("Angles (road fit)");
@@ -692,7 +698,7 @@ function buildReportHTML(summary) {
   return `
     <div class="report">
       <h3>${qualityTitle}</h3>
-      ${rows(fr ? "Images échantillonnées" : "Frames sampled", `${summary.sampled}`)}
+      ${rows(fr ? "Images échantillonnées" : t("framesSampled"), `${summary.sampled}`)}
       ${rows(fr ? "Bonnes images" : "Good frames", `${summary.good} (${pct.toFixed(1)}%)`)}
       ${rows(fr ? "Côté utilisé" : "Side used", sideTxt)}
       <h3 style="margin-top:10px;">${anglesTitle}</h3>
