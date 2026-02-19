@@ -83,25 +83,7 @@ const tStep3 = el("tStep3");
 const st1 = el("st1"), st2 = el("st2"), st3 = el("st3");
 const st1s = el("st1s"), st2s = el("st2s"), st3s = el("st3s");
 const tPreset = el("tPreset");
-const tCrankLen = el("tCrankLen");
-const tUploadLabel = el("tUploadLabel");
-const tShowOverlay = el("tShowOverlay");
-const tTips = el("tTips");
-const tCalibTitle = el("tCalibTitle");
-const tCalibHelp = el("tCalibHelp");
-const tRealDist = el("tRealDist");
-const tPxDistLabel = el("tPxDistLabel");
-const tScaleLabel = el("tScaleLabel");
-const tResultsTitle = el("tResultsTitle");
-const tLegendTitle = el("tLegendTitle");
-const tExportTitle = el("tExportTitle");
-const tPrivacy = el("tPrivacy");
-const tInseam = el("tInseam");
-const inseamCmEl = el("inseamCm");
-const crankFitEl = el("crankFit");
-
-const crankPreset = el("crankPreset");
-const crankMmEl = el("crankMm");
+const crankSuitEl = el("crankSuit");
 
 const I18N = {
   fr: {
@@ -134,6 +116,21 @@ const I18N = {
     scaleLbl: "Échelle :",
     resultsTitle: "3) Résultats :",
     legendTitle: "Seuils (référence) :",
+    legend_knee: "Genou @ PMB",
+    legend_elbow: "Coude",
+    legend_elbow_note: "éviter verrouillé >170°",
+    legend_torso: "Buste",
+    legend_torso_note: "selon discipline",
+    legend_hip: "Hanche",
+    legend_hip_note: "large",
+    legend_crank: "Manivelles",
+    legend_crank_note: "heuristique (basée sur l’angle genou au PMH)",
+    legend_footer: "Seuils de départ pour un MVP route. On pourra ajouter des profils (race/endurance).",
+    crank_title: "Manivelles (adaptation au cycliste)",
+    crank_ok: "Manivelles : rien d’évident ne suggère qu’elles soient trop longues/courtes (heuristique).",
+    crank_too_long: "Manivelles : possible trop longues (genou très fermé en haut du cycle). Corrige d’abord selle (hauteur/avance) ; si tu restes très fermé au PMH, envisage plus court.",
+    crank_too_short: "Manivelles : possible trop courtes (genou très ouvert en haut du cycle). Corrige d’abord la selle ; si tu restes très ouvert au PMH, envisage plus long.",
+
     exportTitle: "Exporter :",
     copyReport: "Copier le rapport",
     privacy: "Aucune donnée n’est envoyée (tout reste local dans ce MVP).",
@@ -179,6 +176,21 @@ const I18N = {
     scaleLbl: "Scale:",
     resultsTitle: "3) Results:",
     legendTitle: "Threshold legend (starter):",
+    legend_knee: "Knee @ BDC",
+    legend_elbow: "Elbow",
+    legend_elbow_note: "avoid locked >170°",
+    legend_torso: "Torso",
+    legend_torso_note: "discipline-dependent",
+    legend_hip: "Hip",
+    legend_hip_note: "broad",
+    legend_crank: "Cranks",
+    legend_crank_note: "heuristic (knee angle at TDC)",
+    legend_footer: "Starter thresholds for a road-fit MVP. We can add profiles (race/endurance).",
+    crank_title: "Crank suitability (rider)",
+    crank_ok: "Cranks: nothing obvious suggests they are too long/short (heuristic).",
+    crank_too_long: "Cranks: possibly too long (very closed knee at top of stroke). Fix saddle height/fore-aft first; if still very closed at TDC, consider shorter cranks.",
+    crank_too_short: "Cranks: possibly too short (knee stays very open at top of stroke). Fix saddle first; if still very open at TDC, consider longer cranks.",
+
     exportTitle: "Export:",
     copyReport: "Copy report",
     privacy: "Nothing is uploaded anywhere in this MVP (local-only).",
@@ -235,8 +247,6 @@ function applyLang(lang){
   if (tPrivacy) tPrivacy.textContent = tr("privacy");
 
   if (tPreset) tPreset.textContent = tr("preset");
-  if (tCrankLen) tCrankLen.textContent = tr("crank");
-  if (tInseam) tInseam.textContent = tr("inseam");
 }
 if (langSel){
   langSel.addEventListener("change", () => applyLang(langSel.value));
@@ -261,42 +271,6 @@ function setStep(step){
     mark(st1,"done"); mark(st2, scalePxPerMm ? "done" : null); mark(st3,"done");
   }
 }
-if (crankPreset && crankMmEl){
-  crankPreset.addEventListener("change", () => {
-    if (crankPreset.value) crankMmEl.value = crankPreset.value;
-  });
-}
-
-function updateCrankFit(){
-  if (!crankFitEl) return;
-  const inseamCm = inseamCmEl && inseamCmEl.value ? parseFloat(inseamCmEl.value) : null;
-  const cr = crankMmEl && crankMmEl.value ? parseFloat(crankMmEl.value) : null;
-  if (!inseamCm || !isFinite(inseamCm)){
-    crankFitEl.innerHTML = tr("crankFitNA");
-    return;
-  }
-  const inseamMm = inseamCm * 10.0;
-  // Heuristic: recommended crank length ~ 0.216 × inseam (mm). This is a rough starting point only.
-  const rec = Math.round(inseamMm * 0.216);
-  const lo = rec - 5;
-  const hi = rec + 5;
-  if (!cr || !isFinite(cr)){
-    crankFitEl.innerHTML = tr("crankFitNA").replace("inseam", "inseam"); // keep message
-    return;
-  }
-  let key = "crankFitOk";
-  if (cr < lo) key = "crankFitShort";
-  if (cr > hi) key = "crankFitLong";
-  crankFitEl.innerHTML = tr(key)
-    .replace("${rec}", rec)
-    .replace("${lo}", lo)
-    .replace("${hi}", hi)
-    .replace("${cr}", cr);
-}
-
-if (inseamCmEl) inseamCmEl.addEventListener("input", updateCrankFit);
-if (crankMmEl) crankMmEl.addEventListener("input", updateCrankFit);
-updateCrankFit();
 let running = false;
 
 let videoUrl = null;
@@ -507,13 +481,21 @@ function classifyHip(h) {
   return "bad";
 }
 
+function classifyCrankSuit(kneeMin, kneeMax){
+  if (kneeMin == null || kneeMax == null) return {cls:null, code:null};
+  if (kneeMin < 70) return {cls:"bad", code:"too_long"};
+  if (kneeMin > 110) return {cls:"bad", code:"too_short"};
+  return {cls:"good", code:"ok"};
+}
+
 function legendHTML() {
   return [
-    `<div>✅ Knee @ BDC: <span class="k">140–150°</span></div>`,
-    `<div>✅ Elbow: <span class="k">150–170°</span> (avoid locked &gt;170°)</div>`,
-    `<div>✅ Torso: <span class="k">25–55°</span> (discipline-dependent)</div>`,
-    `<div>✅ Hip: <span class="k">70–105°</span> (broad)</div>`,
-    `<div class="small muted" style="margin-top:6px;">These are starter thresholds for a road-fit MVP. We can add profiles (race/endurance) later.</div>`
+    `<div>✅ ${tr("legend_knee")}: <span class="k">140–150°</span></div>`,
+    `<div>✅ ${tr("legend_elbow")}: <span class="k">150–170°</span> (${tr("legend_elbow_note")})</div>`,
+    `<div>✅ ${tr("legend_torso")}: <span class="k">25–55°</span> (${tr("legend_torso_note")})</div>`,
+    `<div>✅ ${tr("legend_hip")}: <span class="k">70–105°</span> (${tr("legend_hip_note")})</div>`,
+    `<div>🟡 ${tr("legend_crank")}: <span class="k">TDC 70–110°</span> (${tr("legend_crank_note")})</div>`,
+    `<div class="small muted" style="margin-top:6px;">${tr("legend_footer")}</div>`,
   ].join("");
 }
 
@@ -999,19 +981,6 @@ btnAnalyze.addEventListener("click", async () => {
 
 
   // Crank length sanity check (needs mm scale + user crank length)
-  let crankCheckMsg = null;
-  const crankUser = crankMmEl && crankMmEl.value ? parseFloat(crankMmEl.value) : null;
-  if (pxPerMm && anklePts.length >= 24) {
-    const circ = fitCircleKasa(anklePts);
-    if (circ && isFinite(circ.r)) {
-      const ankleOrbitMm = circ.r / pxPerMm; // NOTE: ankle != pedal spindle; used as a sanity check only
-      if (crankUser && isFinite(crankUser)) {
-        const diff = Math.abs(ankleOrbitMm - crankUser);
-        if (diff > 25) {
-          crankCheckMsg = `Crank-length check: your input is <span class="k">${crankUser} mm</span>, but the estimated ankle-orbit radius is <span class="k">${Math.round(ankleOrbitMm)} mm</span>. That gap is large → calibration or side-view geometry may be off (or this estimator is noisy).`;
-        } else {
-          crankCheckMsg = `Crank-length check: input <span class="k">${crankUser} mm</span> vs estimated ankle-orbit radius <span class="k">${Math.round(ankleOrbitMm)} mm</span> (OK as a rough sanity check).`;
-        }
       } else {
         crankCheckMsg = `Crank-length check (optional): estimated ankle-orbit radius is <span class="k">${Math.round(ankleOrbitMm)} mm</span>. Enter your crank length to compare.`;
       }
@@ -1052,6 +1021,16 @@ btnAnalyze.addEventListener("click", async () => {
   const torsoAvg = mean(frames.map(f => f.torsoAng).filter(x => x != null));
   const hipAvg = mean(frames.map(f => f.hipAng).filter(x => x != null));
   const elbowAvg = mean(frames.map(f => f.elbowAng).filter(x => x != null));
+  const kneeValsAll = frames.map(f => f.kneeAng).filter(x => x != null);
+  const kneeMin = kneeValsAll.length ? Math.min(...kneeValsAll) : null; // most flexed (≈TDC)
+  const kneeMax = kneeValsAll.length ? Math.max(...kneeValsAll) : null; // most extended
+  const crankSuit = classifyCrankSuit(kneeMin, kneeMax);
+  let crankSuitMsg = null;
+  if (crankSuit && crankSuit.code) {
+    if (crankSuit.code === "ok") crankSuitMsg = tr("crank_ok");
+    if (crankSuit.code === "too_long") crankSuitMsg = tr("crank_too_long");
+    if (crankSuit.code === "too_short") crankSuitMsg = tr("crank_too_short");
+  }
 
   // --- Recommendations (heuristic MVP) ---
   // Targets (road fit starter)
@@ -1134,8 +1113,8 @@ btnAnalyze.addEventListener("click", async () => {
 
   blocks.push(reportBlock("Concrete corrections (starter)", recLines));
 
-  if (crankCheckMsg) {
-    blocks.push(reportBlock("Crank-length sanity check", [crankCheckMsg]));
+  if (crankSuitMsg) {
+    blocks.push(reportBlock(tr("crank_title"), [crankSuitMsg]));
   }
 
   if (warnings.length) {
