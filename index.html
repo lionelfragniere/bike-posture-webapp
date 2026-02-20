@@ -1,138 +1,112 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bike Posture Checker (Route) — Import vidéo</title>
+  <title>Bike Posture Checker (Video Upload)</title>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; color: #111; }
     h1 { font-size: 20px; margin: 0 0 8px; }
     .sub { color: #444; margin: 0 0 16px; }
     .grid { display: grid; grid-template-columns: 1fr 380px; gap: 16px; align-items: start; }
     .panel { border: 1px solid #ddd; border-radius: 14px; padding: 12px; }
-    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    label { font-weight: 600; }
-    button { padding: 6px 10px; border-radius: 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+    video { width: 100%; max-width: 960px; border-radius: 12px; background: #000; display:block; object-fit: contain; }
+    canvas { width: 100%; max-width: 960px; border-radius: 12px; background: transparent; display:block; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .row > * { margin: 4px 0; }
+    input[type="number"] { width: 120px; padding: 6px 8px; border-radius: 10px; border: 1px solid #ccc; }
+    input[type="text"] { width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid #ccc; }
+    button { padding: 8px 10px; border-radius: 12px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    input, select { padding: 6px 10px; border-radius: 10px; border: 1px solid #ccc; }
-    .small { font-size: 12px; }
-    .muted { color: #666; }
-    .viewer { position: relative; width: 100%; max-width: 960px; }
-    video { width: 100%; border-radius: 12px; background: #000; display:block; object-fit: contain; }
-    #overlay { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; }
-    canvas { position:absolute; left:0; top:0; width:100%; height:100%; border-radius: 12px; pointer-events:none; background: transparent; }
-    .hr { height:1px; background:#eee; margin:10px 0; }
-    .stepper { display:flex; flex-direction:column; gap:8px; }
-    .step { display:flex; justify-content:space-between; align-items:center; }
-    .pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; border:1px solid #ddd; color:#333; background:#fafafa; }
-    .pill.done { background:#eaffea; border-color:#bfe8bf; }
-    .pill.warn { background:#fff3d6; border-color:#ffe0a3; }
-    .pill.todo { background:#f3f3f3; }
-  
-    .report h3 { font-size: 14px; margin: 8px 0 6px; }
-    .rrow { display:flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
-    .rlabel { color:#222; font-weight:600; font-size: 13px; }
-    .rval { color:#111; font-size: 13px; text-align:right; }
-    .rlist { margin: 6px 0 0 18px; }
-
+    .metric { font-size: 14px; margin: 6px 0; }
+    .muted { color: #555; font-size: 13px; }
+    .warn { color: #8a4b00; }
+    .bad { font-weight: 700; }
+    hr { border: none; border-top: 1px solid #eee; margin: 10px 0; }
+    .small { font-size: 12px; color: #666; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #f4f4f4; font-size: 12px; }
+    .k { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: #f6f6f6; padding: 2px 6px; border-radius: 8px;}
   </style>
-  <link rel="icon" href="data:,">
 </head>
 <body>
-  <div class="row" style="justify-content:space-between; align-items:flex-start;">
-    <div>
-      <h1 id="tTitle">Bike Posture Checker (Route) — Import vidéo</h1>
-      <div class="sub" id="tSub">Analyse la posture localement dans ton navigateur. Calibre avec une mesure visible dans la vidéo (sans cibles imprimées).</div>
-    </div>
-    <div class="row">
-      <label id="tLangLabel" for="langSel">Langue: <span id="versionTag" style="margin-left:8px; font-size:12px; opacity:0.8;"></span></label>
-      <select id="langSel">
-        <option value="fr" selected>Français</option>
-        <option value="en">English</option>
-      </select>
-    </div>
-  </div>
+  <h1>Bike Posture Checker (Road Fit) — Video Upload</h1>
+  <p class="sub">Runs pose locally in your browser. Calibrate using a known measurement visible in the video (no printed targets).</p>
 
   <div class="grid">
     <div class="panel">
       <div class="row">
-        <label id="tUploadLabel" for="file">1) Importer une vidéo de profil :</label>
+        <label><b>1) Upload side-view video:</b></label>
         <input id="file" type="file" accept="video/*"/>
-        <span class="small muted" id="vidInfo">Aucune vidéo</span>
-      </div>
-      <div class="row" style="margin-top:8px;">
-        <button id="btnLoad" disabled>Charger</button>
-        <button id="btnGrab" disabled>Capturer une image d'étalonnage</button>
-        <button id="btnAnalyze" disabled>Analyser la vidéo</button>
-        <button id="btnReset">Réinitialiser</button>
+        <span id="vidInfo" class="pill">No video</span>
       </div>
 
-      <div class="viewer" style="margin-top:12px;">
-        <video id="video" playsinline controls></video>
-        <canvas id="overlay"></canvas>
+      <div class="row">
+        <button id="btnLoad" disabled>Load</button>
+        <button id="btnGrab" disabled>Grab calibration frame</button>
+        <button id="btnAnalyze" disabled>Analyze video</button>
+        <button id="btnReset">Reset</button>
+      </div>
+
+      <div id="player" style="position:relative; margin-top:10px; max-width:960px; width:100%;">
+        <video id="video" controls playsinline muted style="display:block;"></video>
+        <canvas id="overlay" width="960" height="540" style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none;"></canvas>
       </div>
 
       <div class="row" style="margin-top:8px;">
-        <label><input id="chkOverlay" type="checkbox"/> <span id="tShowOverlay">Afficher squelette + mesures pendant la lecture</span></label>
+        <label class="muted"><input id="chkOverlay" type="checkbox"/> Show skeleton + measurements during playback</label>
       </div>
-      <div class="small muted" id="tTips">Conseils : vraie vue de profil, corps entier visible, caméra stable, clip 20–40 s. Compatibilité: MP4 (H.264) conseillé.</div>
+
+      <p class="small">
+        Tips: true side view, full body visible, stable camera, 20–40s clip. Best compatibility: MP4 (H.264).
+      </p>
     </div>
 
     <div class="panel">
-      <div class="small"><b id="tStatusLabel">Statut:</b> <span id="status">Prêt.</span></div>
-      <div class="hr"></div>
+      <div class="metric"><b>Status:</b> <span id="status">Idle</span></div>
 
-      <div class="stepper" id="stepper">
-        <div class="step"><div><b>1</b> <span id="tStep1">Importer la vidéo</span></div><span class="pill todo" id="st1s">en attente</span></div>
-        <div class="step"><div><b>2</b> <span id="tStep2">Étalonnage (optionnel)</span></div><span class="pill todo" id="st2s">optionnel</span></div>
-        <div class="step"><div><b>3</b> <span id="tStep3">Analyser</span></div><span class="pill todo" id="st3s">en attente</span></div>
-      </div>
-
-      <div class="hr"></div>
-
-      <div id="tCalibTitle"><b>2) Étalonnage (mm) :</b></div>
-      <div class="small muted" id="tCalibHelp">Clique 2 points sur l’image d’étalonnage (ex : extrémités du diamètre de la roue), puis entre la distance réelle en mm.</div>
-
-      <div class="row" style="margin-top:6px;">
-        <label class="small" id="tPreset">Préréglage:</label>
-        <select id="preset">
-          <option value="">— choisir —</option>
-          <option value="678">700c × 28 (≈ 678 mm)</option>
-          <option value="686">700c × 32 (≈ 686 mm)</option>
-          <option value="672">700c × 25 (≈ 672 mm)</option>
-          <option value="647">650b × 47 (≈ 647 mm)</option>
+      <hr/>
+      <div class="metric"><b>2) Calibration (mm):</b></div>
+      <div class="muted">Click 2 points on the calibration frame below (e.g., wheel diameter endpoints), then enter the real distance in mm.</div>
+      <div class="row">
+        <label>Preset:</label>
+        <select id="preset" style="padding:6px 8px; border-radius:10px; border:1px solid #ccc;">
+          <option value="">— choose —</option>
+          <optgroup label="Wheel outer diameter (approx)">
+            <option value="672">700c × 25 (≈ 672 mm)</option>
+            <option value="678">700c × 28 (≈ 678 mm)</option>
+            <option value="686">700c × 32 (≈ 686 mm)</option>
+            <option value="660">650b × 47 (≈ 660 mm)</option>
+          </optgroup>
+          <optgroup label="Crank length">
+            <option value="165">Crank 165 mm</option>
+            <option value="170">Crank 170 mm</option>
+            <option value="172.5">Crank 172.5 mm</option>
+            <option value="175">Crank 175 mm</option>
+          </optgroup>
         </select>
       </div>
-
-      <div class="row" style="margin-top:6px;">
-        <button id="btnPick" disabled>Choisir 2 points</button>
-        <button id="btnClearPts" disabled>Effacer</button>
+      <div class="row">
+        <button id="btnPick" disabled>Pick 2 points</button>
+        <button id="btnClearPts" disabled>Clear points</button>
       </div>
-
-      <div class="row" style="margin-top:6px;">
-        <label class="small" id="tRealDist">Distance réelle (mm):</label>
-        <input id="realMm" type="number" min="1" step="0.1" placeholder="ex : 678"/>
-        <button id="btnSetScale" disabled>Définir l’échelle</button>
+      <div class="row">
+        <label>Real distance (mm):</label>
+        <input id="realMm" type="number" min="1" step="1" placeholder="e.g., 670"/>
+        <button id="btnSetScale" disabled>Set scale</button>
       </div>
+      <div class="metric">Pixels distance: <span class="k" id="pxDist">—</span></div>
+      <div class="metric">Scale: <span class="k" id="scale">—</span> <span class="muted">(px per mm)</span></div>
 
-      <div class="small" style="margin-top:6px;">
-        <div><span id="tPxDistLabel">Distance (pixels):</span> <span id="pxDist">—</span></div>
-        <div><span id="tScaleLabel">Échelle:</span> <span id="scale">—</span></div>
-      </div>
+      <hr/>
+      <div class="metric"><b>3) Results:</b></div>
+      <div class="metric"><b>Threshold legend (starter):</b></div>
+      <div id="legend" class="muted"></div>
+      <div id="results" class="muted">Run analysis to see angles + suggestions.</div>
 
-      <div class="hr"></div>
-
-      <div id="tResultsTitle"><b>3) Résultats :</b></div>
-      <div class="small" id="tLegendTitle"><b>Légende des seuils (road fit) :</b></div>
-      <div class="small" id="legend"></div>
-
-      <div class="hr"></div>
-      <div class="small" id="results"></div>
-
-      <div class="hr"></div>
-      <div class="small" id="tExportTitle"><b>Export :</b></div>
-      <button id="btnCopy" disabled>Copier le rapport</button>
-      <div class="small muted" id="tPrivacy">Rien n’est téléversé : tout reste local dans ce MVP.</div>
+      <hr/>
+      <div class="metric"><b>Export:</b></div>
+      <button id="btnCopy" disabled>Copy report to clipboard</button>
+      <div class="small muted">Nothing is uploaded anywhere in this MVP.</div>
     </div>
   </div>
 
