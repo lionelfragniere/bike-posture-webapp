@@ -1153,7 +1153,7 @@
       }
     };
 
-    var currentLang = "en";
+    var currentLang = "fr";
 
     function t(key) {
       return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) || (TRANSLATIONS.en && TRANSLATIONS.en[key]) || key;
@@ -1191,6 +1191,9 @@
       if (enBtn) enBtn.classList.toggle("active", lang === "en");
       if (frBtn) frBtn.classList.toggle("active", lang === "fr");
       applyTranslations();
+      // Swap placeholder image for the current language
+      var ph = document.getElementById("placeholderImg");
+      if (ph) ph.src = lang === "fr" ? "./cyclist_placeholder_fr.png" : "./cyclist_placeholder.png";
     }
 
     // Wire up lang buttons once DOM is ready
@@ -1199,6 +1202,7 @@
       var frBtn = document.getElementById("langFr");
       if (enBtn) enBtn.addEventListener("click", function () { setLang("en"); });
       if (frBtn) frBtn.addEventListener("click", function () { setLang("fr"); });
+      setLang("fr"); // apply French translations on load
     });
   </script>
 </head>
@@ -1218,8 +1222,8 @@
       <a href="https://www.fragniere.li" target="_blank" rel="noopener" class="branding-link">brought to you by
         fragniere.li</a>
       <div class="lang-switcher">
-        <button class="lang-btn active" id="langEn">EN</button>
-        <button class="lang-btn" id="langFr">FR</button>
+        <button class="lang-btn" id="langEn">🇬🇧 EN</button>
+        <button class="lang-btn active" id="langFr">🇫🇷 FR</button>
       </div>
     </div>
   </header>
@@ -1291,8 +1295,8 @@
           <!-- Right: placeholder image (hidden when video loads) / video player -->
           <div class="step1-preview-col">
             <div id="step1Placeholder" class="step1-placeholder">
-              <img src="./cyclist_placeholder.png" alt="Side view example" />
-              <div class="placeholder-caption" data-i18n="placeholderCaption">Example: portrait side view</div>
+              <img id="placeholderImg" src="./cyclist_placeholder_fr.png" alt="Side view example" />
+              <div class="placeholder-caption" data-i18n="placeholderCaption">Exemple : profil parfait (portrait)</div>
             </div>
             <div id="player" style="display:none;">
               <video id="video" controls playsinline muted style="display:block;"></video>
