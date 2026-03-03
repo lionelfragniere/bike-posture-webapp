@@ -36,12 +36,19 @@
       padding: 0;
     }
 
+    html,
+    body {
+      height: 100dvh;
+      overflow: hidden;
+    }
+
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
       line-height: 1.6;
+      display: flex;
+      flex-direction: column;
     }
 
     /* ===== HEADER ===== */
@@ -49,13 +56,10 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 18px 28px;
+      padding: 14px 24px;
       border-bottom: 1px solid var(--border);
       background: linear-gradient(135deg, rgba(79, 125, 247, 0.06), rgba(124, 58, 237, 0.06));
-      backdrop-filter: blur(8px);
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      flex-shrink: 0;
     }
 
     .app-logo {
@@ -126,33 +130,105 @@
     /* ===== MAIN LAYOUT ===== */
     .app-body {
       display: grid;
-      grid-template-columns: 1fr 360px;
+      grid-template-columns: 1fr 420px;
       gap: 0;
-      min-height: calc(100vh - 73px);
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .main-col {
-      padding: 24px;
+      padding: 20px 24px;
       border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .side-col {
-      padding: 24px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 12px;
+      overflow-y: auto;
+      min-height: 0;
     }
 
     /* ===== WIZARD STEPS ===== */
     .wizard-steps {
       display: flex;
       gap: 0;
-      margin-bottom: 24px;
+      margin-bottom: 16px;
       background: var(--bg2);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 4px;
       overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    /* Step content panels: fill remaining main-col space */
+    .step-panel {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    /* Step wrapper (the actual content inside each step) */
+    .step-inner {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Step content containers — fill remaining main-col space */
+    #stepContent1,
+    #stepContent2,
+    #stepContent3,
+    #stepContent4 {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    /* Within step 1, the player grows to fill remaining space */
+    #stepContent1 #player {
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* Within step 2, the player target placeholder grows */
+    #stepContent2 #player2,
+    #stepContent2 #player {
+      flex: 1;
+      min-height: 0;
+      min-height: 180px;
+      /* min visual height */
+    }
+
+    /* Upload zone: fixed height, never grows */
+    .upload-zone {
+      flex-shrink: 0;
+      height: 130px;
+      padding: 18px 28px;
+    }
+
+    /* Hint box: don't grow */
+    .hint-box {
+      flex-shrink: 0;
+    }
+
+    /* Progress and analysis content */
+    #analysisProgress {
+      flex-shrink: 0;
     }
 
     .step-tab {
@@ -368,19 +444,29 @@
     /* ===== VIDEO PLAYER ===== */
     #player {
       position: relative;
-      width: 100%;
+      flex: 1;
+      min-height: 0;
       border-radius: var(--radius-sm);
       overflow: hidden;
       background: #000;
-      margin-top: 16px;
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     #video {
-      width: 100%;
       display: block;
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
       border-radius: var(--radius-sm);
       background: #000;
       object-fit: contain;
+      /* Ensure video never overflows the player box */
+      flex-shrink: 1;
+      min-height: 0;
     }
 
     #overlay {
@@ -808,6 +894,30 @@
       color: var(--green);
     }
 
+    /* ===== STEP 2 TWO-COLUMN LAYOUT ===== */
+    .calib-body {
+      display: flex;
+      gap: 16px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .calib-video-col {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .calib-controls-col {
+      width: 260px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      gap: 0;
+    }
+
     /* Responsive */
     @media (max-width: 900px) {
       .app-body {
@@ -852,7 +962,7 @@
       en: {
         pageTitle: "Bike Posture Checker", appTitle: "Bike Posture Checker", appSub: "AI-powered road fit analysis",
         step1Label: "Upload", step2Label: "Calibrate", step3Label: "Analyse", step4Label: "Results",
-        hint1: "Record a <strong>side-view video</strong> of yourself cycling. Keep your full body in frame, use a stable camera, and aim for a 20–40 second clip. Best format: <strong>MP4 (H.264)</strong>.",
+        hint1: "Record a <strong>side-view video</strong> of yourself cycling. Keep your full body in frame, use a stable camera, and aim for a 20–40 second clip. Best format: <strong>MP4 (H.264)</strong>. <strong>Portrait orientation works best</strong> — stand beside your bike so the full profile fits. No home trainer? Stand near a wall and do <strong>back-pedalling</strong> to simulate the motion.",
         hint2: "Calibrate so the app knows the real scale of your video. <strong>Pause on a frame</strong> where a known object (e.g. your wheel) is clearly visible, then pick 2 points at its extremities and enter the real distance.",
         hint2b: "Calibration is <strong>optional</strong> but required for millimetre saddle fore-aft recommendations. Knee angle suggestions always work.",
         hint3: "The AI will scan your video frame by frame, detect your body joints, and measure your cycling angles. This can take 30–90 seconds depending on video length.",
@@ -860,7 +970,7 @@
         hint4: "Analysis complete! Review your angles and recommendations in the right panel. Enable the overlay to see your skeleton annotated directly on the video.",
         uploadLabel: "Click or drag a video here", uploadHint: "MP4, MOV, AVI · max 2 GB",
         btnLoad: "Load video →", btnReset: "Reset", btnGrab: "⏸ Grab calibration frame", btnPick: "🎯 Pick 2 points",
-        btnClearPts: "🗑 Clear points", btnSetScale: "Set scale ✓", nextAnalyse: "Next: Analyse →",
+        btnClearPts: "🗑 Clear points", btnSetScale: "Set scale ✓", nextAnalyse: "Next: Analyse →", nextCalibrate: "Next: Calibrate →",
         btnAnalyze: "▶ Start Analysis", btnCopy: "Copy report to clipboard", overlayLabel: "Show skeleton overlay during playback",
         presetLabel: "Quick preset (fills distance):", presetChoose: "— choose —",
         presetGroupWheel: "Wheel outer diameter (approx)", presetGroupCrank: "Crank length",
@@ -896,7 +1006,7 @@
       fr: {
         pageTitle: "Analyseur Posture Vélo", appTitle: "Analyseur Posture Vélo", appSub: "Analyse de position par IA",
         step1Label: "Charger", step2Label: "Calibrer", step3Label: "Analyser", step4Label: "Résultats",
-        hint1: "Enregistrez une <strong>vidéo de profil</strong> de vous en train de pédaler. Gardez tout le corps dans le cadre, utilisez une caméra stable, visez 20–40 secondes. Format recommandé : <strong>MP4 (H.264)</strong>.",
+        hint1: "Enregistrez une <strong>vidéo de profil</strong> de vous en train de pédaler. Gardez tout le corps dans le cadre, utilisez une caméra stable, visez 20–40 secondes. Format recommandé : <strong>MP4 (H.264)</strong>. <strong>Le format portrait est idéal</strong> — placez-vous de côté. Pas de home trainer ? Appuyez-vous contre un mur et faites du <strong>pédalage arrière</strong> pour simuler le mouvement.",
         hint2: "Calibrez afin que l'application connaisse l'échelle réelle de votre vidéo. <strong>Mettez en pause sur une image</strong> où un objet connu (ex. votre roue) est bien visible, choisissez 2 points aux extrémités, puis saisissez la distance réelle.",
         hint2b: "La calibration est <strong>facultative</strong> mais nécessaire pour les recommandations millimètre avant/arrière de selle. Les suggestions d'angle de genou fonctionnent toujours.",
         hint3: "L'IA va analyser votre vidéo image par image, détecter vos articulations et mesurer vos angles de pédalage. Cela peut prendre 30–90 secondes selon la durée de la vidéo.",
@@ -904,7 +1014,7 @@
         hint4: "Analyse terminée ! Consultez vos angles et recommandations dans le panneau de droite. Activez l'incrustation pour voir votre squelette annoté sur la vidéo.",
         uploadLabel: "Cliquez ou déposez une vidéo ici", uploadHint: "MP4, MOV, AVI · max 2 Go",
         btnLoad: "Charger la vidéo →", btnReset: "Réinitialiser", btnGrab: "⏸ Saisir l'image de calibration", btnPick: "🎯 Choisir 2 points",
-        btnClearPts: "🗑 Effacer les points", btnSetScale: "Définir l'échelle ✓", nextAnalyse: "Suivant : Analyser →",
+        btnClearPts: "🗑 Effacer les points", btnSetScale: "Définir l'échelle ✓", nextAnalyse: "Suivant : Analyser →", nextCalibrate: "Suivant : Calibrer →",
         btnAnalyze: "▶ Lancer l'analyse", btnCopy: "Copier le rapport", overlayLabel: "Afficher le squelette pendant la lecture",
         presetLabel: "Préréglage rapide (remplit la distance) :", presetChoose: "— choisir —",
         presetGroupWheel: "Diamètre extérieur de roue (approx.)", presetGroupCrank: "Longueur de manivelle",
@@ -1039,8 +1149,9 @@
         <div class="hint-box" style="margin-bottom:16px;">
           <span class="hint-icon">💡</span>
           <span data-i18n="hint1">Record a <strong>side-view video</strong> of yourself cycling. Keep your full body in
-            frame, use a stable camera, and aim for a 20–40 second clip. Best format: <strong>MP4
-              (H.264)</strong>.</span>
+            frame, use a stable camera, and aim for a 20–40 second clip. Best format: <strong>MP4 (H.264)</strong>.
+            <strong>Portrait orientation works best</strong> — stand beside your bike so the full profile fits. No home
+            trainer? Stand near a wall and do <strong>back-pedalling</strong> to simulate the motion.</span>
         </div>
 
         <div class="upload-zone" id="uploadZone">
@@ -1057,7 +1168,10 @@
         </div>
 
         <div class="btn-row" style="margin-top:14px;">
-          <button class="btn btn-primary" id="btnLoad" disabled data-i18n="btnLoad">Load video →</button>
+          <!-- btnLoad is now hidden — file select triggers auto-load -->
+          <button class="btn btn-primary" id="btnLoad" style="display:none;" data-i18n="btnLoad">Load video →</button>
+          <button class="btn btn-primary" id="btnNextCalibrate" style="display:none;" data-i18n="nextCalibrate">Next:
+            Calibrate →</button>
           <button class="btn btn-danger" id="btnReset" data-i18n="btnReset">Reset</button>
         </div>
 
@@ -1078,81 +1192,90 @@
 
       <!-- STEP 2: Calibrate -->
       <div id="stepContent2" style="display:none;" class="fade-in">
-        <div class="hint-box" style="margin-bottom:16px;">
+        <div class="hint-box" style="margin-bottom:16px; flex-shrink:0;">
           <span class="hint-icon">📏</span>
           <span data-i18n="hint2">Calibrate so the app knows the real scale of your video. <strong>Pause on a
               frame</strong> where a known object (e.g. your wheel) is clearly visible, then pick 2 points at its
             extremities and enter the real distance.</span>
         </div>
 
-        <div style="margin-bottom:14px;" class="btn-row">
-          <button class="btn" id="btnGrab" disabled data-i18n="btnGrab">⏸ Grab calibration frame</button>
-          <button class="btn" id="btnPick" disabled data-i18n="btnPick">🎯 Pick 2 points</button>
-          <button class="btn" id="btnClearPts" disabled data-i18n="btnClearPts">🗑 Clear points</button>
-        </div>
+        <!-- Two-column layout: video left, calib controls right -->
+        <div class="calib-body">
+          <!-- Left: Video player -->
+          <div class="calib-video-col">
+            <div style="margin-bottom:10px;" class="btn-row">
+              <button class="btn" id="btnGrab" disabled data-i18n="btnGrab">⏸ Grab calibration frame</button>
+              <button class="btn" id="btnPick" disabled data-i18n="btnPick">🎯 Pick 2 points</button>
+              <button class="btn" id="btnClearPts" disabled data-i18n="btnClearPts">🗑 Clear points</button>
+            </div>
 
-        <div class="pick-status">
-          <div class="pick-dot" id="pickDot1">P1</div>
-          <div class="pick-dot" id="pickDot2">P2</div>
-          <span style="font-size:13px; color:var(--text3); align-self:center;" id="pickStatusText"
-            data-i18n="pickWaiting">Click "Pick 2 points", then click on the video.</span>
-        </div>
+            <div class="pick-status" style="margin-bottom:10px;">
+              <div class="pick-dot" id="pickDot1">P1</div>
+              <div class="pick-dot" id="pickDot2">P2</div>
+              <span style="font-size:13px; color:var(--text3); align-self:center;" id="pickStatusText"
+                data-i18n="pickWaiting">Click "Pick 2 points", then click on the video.</span>
+            </div>
 
-        <div id="player2"
-          style="margin-top:14px; position:relative; border-radius:12px; overflow:hidden; background:#000;">
-          <!-- mirror of #player — JS will move/show the real player here -->
-        </div>
-
-        <div class="form-group" style="margin-top:14px;">
-          <label data-i18n="presetLabel">Quick preset (fills distance):</label>
-          <select id="preset">
-            <option value="" data-i18n="presetChoose">— choose —</option>
-            <optgroup data-i18n="presetGroupWheel" label="Wheel outer diameter (approx)">
-              <option value="672">700c × 25 (≈ 672 mm)</option>
-              <option value="678">700c × 28 (≈ 678 mm)</option>
-              <option value="686">700c × 32 (≈ 686 mm)</option>
-              <option value="660">650b × 47 (≈ 660 mm)</option>
-            </optgroup>
-            <optgroup data-i18n="presetGroupCrank" label="Crank length">
-              <option value="165">Crank 165 mm</option>
-              <option value="170">Crank 170 mm</option>
-              <option value="172.5">Crank 172.5 mm</option>
-              <option value="175">Crank 175 mm</option>
-            </optgroup>
-          </select>
-        </div>
-
-        <div class="form-row" style="margin-bottom:12px;">
-          <div style="flex:1;">
-            <label style="display:block;margin-bottom:6px;" data-i18n="realDistLabel">Real distance (mm):</label>
-            <input id="realMm" type="number" min="1" step="1" placeholder="e.g., 678" style="max-width:160px;" />
+            <div id="player2"
+              style="position:relative; border-radius:12px; overflow:hidden; background:#000; min-height:120px; flex:1;">
+              <!-- real player moves here when on step 2 -->
+            </div>
           </div>
-          <div style="align-self:flex-end;">
-            <button class="btn btn-primary" id="btnSetScale" disabled data-i18n="btnSetScale">Set scale ✓</button>
-          </div>
-        </div>
 
-        <div class="card" style="margin-top:8px;">
-          <div class="card-title"><span class="dot"></span><span data-i18n="calibHeader">Calibration Result</span></div>
-          <div class="result-line">
-            <span data-i18n="pxDistLabel" style="color:var(--text3);">Pixel distance:</span>
-            <span class="k" id="pxDist">—</span>
-          </div>
-          <div class="result-line">
-            <span data-i18n="scaleLabel" style="color:var(--text3);">Scale:</span>
-            <span class="k" id="scale">—</span>
-            <span style="font-size:12px;color:var(--text3);">px/mm</span>
-          </div>
-        </div>
+          <!-- Right: Calibration controls -->
+          <div class="calib-controls-col">
+            <div class="form-group">
+              <label data-i18n="presetLabel">Quick preset (fills distance):</label>
+              <select id="preset">
+                <option value="" data-i18n="presetChoose">— choose —</option>
+                <optgroup data-i18n="presetGroupWheel" label="Wheel outer diameter (approx)">
+                  <option value="672">700c × 25 (≈ 672 mm)</option>
+                  <option value="678">700c × 28 (≈ 678 mm)</option>
+                  <option value="686">700c × 32 (≈ 686 mm)</option>
+                  <option value="660">650b × 47 (≈ 660 mm)</option>
+                </optgroup>
+                <optgroup data-i18n="presetGroupCrank" label="Crank length">
+                  <option value="165">Crank 165 mm</option>
+                  <option value="170">Crank 170 mm</option>
+                  <option value="172.5">Crank 172.5 mm</option>
+                  <option value="175">Crank 175 mm</option>
+                </optgroup>
+              </select>
+            </div>
 
-        <div class="hint-box warn" style="margin-top:14px;">
-          <span class="hint-icon">⚠️</span>
-          <span data-i18n="hint2b">Calibration is <strong>optional</strong> but required for millimetre saddle fore-aft
-            recommendations. Knee angle suggestions always work.</span>
-        </div>
+            <div class="form-group">
+              <label data-i18n="realDistLabel">Real distance (mm):</label>
+              <div class="form-row">
+                <input id="realMm" type="number" min="1" step="1" placeholder="e.g., 678" style="flex:1;" />
+                <button class="btn btn-primary" id="btnSetScale" disabled data-i18n="btnSetScale">Set scale ✓</button>
+              </div>
+            </div>
 
-        <div class="btn-row" style="margin-top:16px;">
-          <button class="btn btn-primary" id="btnNextAnalyse" data-i18n="nextAnalyse">Next: Analyse →</button>
+            <div class="card" style="margin-top:4px;">
+              <div class="card-title"><span class="dot"></span><span data-i18n="calibHeader">Calibration Result</span>
+              </div>
+              <div class="result-line">
+                <span data-i18n="pxDistLabel" style="color:var(--text3);">Pixel distance:</span>
+                <span class="k" id="pxDist">—</span>
+              </div>
+              <div class="result-line">
+                <span data-i18n="scaleLabel" style="color:var(--text3);">Scale:</span>
+                <span class="k" id="scale">—</span>
+                <span style="font-size:12px;color:var(--text3);">px/mm</span>
+              </div>
+            </div>
+
+            <div class="hint-box warn" style="margin-top:12px;">
+              <span class="hint-icon">⚠️</span>
+              <span data-i18n="hint2b">Calibration is <strong>optional</strong> but required for millimetre saddle
+                fore-aft
+                recommendations. Knee angle suggestions always work.</span>
+            </div>
+
+            <div class="btn-row" style="margin-top:14px;">
+              <button class="btn btn-primary" id="btnNextAnalyse" data-i18n="nextAnalyse">Next: Analyse →</button>
+            </div>
+          </div>
         </div>
       </div>
 

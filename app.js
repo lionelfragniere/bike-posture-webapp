@@ -430,34 +430,14 @@ function enableControls() {
   btnPick.disabled = !validateVideoLoaded();
 }
 
-// ---- File input ----
-fileEl.addEventListener("change", () => {
-  const f = fileEl.files?.[0];
-  btnLoad.disabled = !f;
-  if (f) {
-    fileName.textContent = f.name;
-    fileMetaText.textContent = `${(f.size / 1e6).toFixed(1)} MB`;
-    fileInfo.classList.add("visible");
-    uploadZone.classList.add("has-file");
-  }
-});
-
-uploadZone.addEventListener("dragover", (e) => { e.preventDefault(); uploadZone.classList.add("drag-over"); });
-uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("drag-over"));
-uploadZone.addEventListener("drop", (e) => {
-  e.preventDefault();
-  uploadZone.classList.remove("drag-over");
-  const f = e.dataTransfer.files?.[0];
-  if (f && f.type.startsWith("video/")) {
-    fileEl.files = e.dataTransfer.files;
-    fileEl.dispatchEvent(new Event("change"));
-  }
-});
-
-// ---- Load button ----
-btnLoad.addEventListener("click", async () => {
-  const f = fileEl.files?.[0];
+// ---- File input & auto-load ----
+async function doLoadVideo(f) {
   if (!f) return;
+  fileName.textContent = f.name;
+  fileMetaText.textContent = `${(f.size / 1e6).toFixed(1)} MB`;
+  fileInfo.classList.add("visible");
+  uploadZone.classList.add("has-file");
+
   if (videoUrl) URL.revokeObjectURL(videoUrl);
   videoUrl = URL.createObjectURL(f);
   video.src = videoUrl;
@@ -479,6 +459,31 @@ btnLoad.addEventListener("click", async () => {
   markStepComplete(1);
   el("resultsCard").style.display = "block";
   el("exportCard").style.display = "block";
+  // Show Next: Calibrate button
+  const btnNextCal = el("btnNextCalibrate");
+  if (btnNextCal) btnNextCal.style.display = "";
+}
+
+fileEl.addEventListener("change", () => {
+  const f = fileEl.files?.[0];
+  if (f) doLoadVideo(f);
+});
+
+uploadZone.addEventListener("dragover", (e) => { e.preventDefault(); uploadZone.classList.add("drag-over"); });
+uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("drag-over"));
+uploadZone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove("drag-over");
+  const f = e.dataTransfer.files?.[0];
+  if (f && f.type.startsWith("video/")) {
+    doLoadVideo(f);
+  }
+});
+
+// ---- Load button (hidden, kept for API compat) ----
+btnLoad.addEventListener("click", async () => {
+  const f = fileEl.files?.[0];
+  if (f) doLoadVideo(f);
 });
 
 // ---- Reset ----
@@ -507,6 +512,9 @@ btnReset.addEventListener("click", () => {
   btnClearPts.disabled = true;
   btnSetScale.disabled = true;
   btnCopy.disabled = true;
+
+  const btnNextCal = el("btnNextCalibrate");
+  if (btnNextCal) btnNextCal.style.display = "none";
 
   fileInfo.classList.remove("visible");
   uploadZone.classList.remove("has-file");
@@ -891,6 +899,7 @@ el("tab2")?.addEventListener("click", () => goToStep(2));
 el("tab3")?.addEventListener("click", () => goToStep(3));
 el("tab4")?.addEventListener("click", () => goToStep(4));
 el("btnNextAnalyse")?.addEventListener("click", () => goToStep(3));
+el("btnNextCalibrate")?.addEventListener("click", () => goToStep(2));
 
 // ---- Init ----
 updateCalibrationUI();
