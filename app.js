@@ -1,8 +1,10 @@
-// NOTE:
-// We intentionally DO NOT import MediaPipe Tasks at top-level.
-// If the CDN is blocked (corporate proxy / CSP / offline), a top-level import
-// would prevent *all* UI logic from running (including enabling the Load button).
-// Instead, we lazy-load the dependency only when the user clicks "Analyze".
+// ===========================================================
+// BIKE POSTURE CHECKER — app.js
+// ===========================================================
+// i18n: t(), setLang(), TRANSLATIONS are defined globally in index.html <script>.
+// This module calls t(key) to get translated strings.
+
+// ---- MediaPipe lazy-load ----
 let vision = null;
 
 async function loadVision() {
@@ -13,16 +15,13 @@ async function loadVision() {
   ];
   let lastErr = null;
   for (const u of urls) {
-    try {
-      vision = await import(u);
-      return vision;
-    } catch (e) {
-      lastErr = e;
-    }
+    try { vision = await import(u); return vision; }
+    catch (e) { lastErr = e; }
   }
   throw lastErr ?? new Error("Failed to load MediaPipe tasks-vision");
 }
 
+// ---- DOM refs ----
 const el = (id) => document.getElementById(id);
 
 const fileEl = el("file");
@@ -30,12 +29,108 @@ const btnLoad = el("btnLoad");
 const btnGrab = el("btnGrab");
 const btnAnalyze = el("btnAnalyze");
 const btnReset = el("btnReset");
-
 const video = el("video");
 const overlay = el("overlay");
 const ctx = overlay.getContext("2d");
+const statusEl = el("status");
+const statusDot = el("statusDot");
+const pxDistEl = el("pxDist");
+const scaleEl = el("scale");
+const resultsEl = el("results");
+const btnCopy = el("btnCopy");
+const btnPick = el("btnPick");
+const btnClearPts = el("btnClearPts");
+const presetEl = el("preset");
+const realMmEl = el("realMm");
+const btnSetScale = el("btnSetScale");
+const progressBar = el("progressBar");
+const progressDetail = el("progressDetail");
+const analysisProgress = el("analysisProgress");
+const pickDot1 = el("pickDot1");
+const pickDot2 = el("pickDot2");
+const pickStatusText = el("pickStatusText");
+const fileInfo = el("fileInfo");
+const fileName = el("fileName");
+const fileMetaText = el("fileMetaText");
+const uploadZone = el("uploadZone");
+const overlayToggleRow = el("overlayToggleRow");
 
-// Keep overlay canvas visually aligned with the rendered <video> element (no cropping).
+// ---- State ----
+let poseLandmarker = null;
+let running = false;
+let videoUrl = null;
+let picking = false;
+let points = [];
+let pxPerMm = null;
+let analyzedFrames = [];
+let replayRAF = null;
+let lastReplayIdx = 0;
+
+// ---- Wizard step ----
+let currentStep = 1;
+let stepUnlocked = [true, false, false, false];
+
+function goToStep(n) {
+  if (n < 1 || n > 4) return;
+  if (!stepUnlocked[n - 1]) return;
+  currentStep = n;
+  for (let i = 1; i <= 4; i++) {
+    const content = el(`stepContent${i}`);
+    const tab = el(`tab${i}`);
+    if (content) content.style.display = i === n ? "" : "none";
+    if (tab) {
+      tab.classList.toggle("active", i === n);
+      tab.classList.remove("disabled");
+      if (!stepUnlocked[i - 1]) tab.classList.add("disabled");
+    }
+  }
+  if (n === 1) {
+    placePlayer(null);
+  } else if (n === 2) {
+    placePlayer("player2");
+  } else if (n === 4) {
+    placePlayer("player4wrap");
+  }
+}
+
+function unlockStep(n) {
+  stepUnlocked[n - 1] = true;
+  const tab = el(`tab${n}`);
+  if (tab) tab.classList.remove("disabled");
+}
+
+function markStepComplete(n) {
+  const tab = el(`tab${n}`);
+  if (tab) tab.classList.add("completed");
+  const numEl = tab?.querySelector(".step-num");
+  if (numEl) numEl.textContent = "✓";
+}
+
+// ---- Player placement ----
+const playerDiv = el("player");
+let playerTarget = null;
+
+function placePlayer(targetId) {
+  if (targetId === playerTarget) return;
+  playerTarget = targetId;
+  playerDiv.style.display = "block";
+
+  const target = targetId ? el(targetId) : null;
+  if (target) {
+    target.appendChild(playerDiv);
+  } else {
+    const step1 = el("stepContent1");
+    const ref = el("overlayToggleRow");
+    if (ref && step1.contains(ref)) {
+      step1.insertBefore(playerDiv, ref);
+    } else {
+      step1.appendChild(playerDiv);
+    }
+  }
+  syncOverlayCssSize();
+}
+
+// ---- Overlay sync ----
 function syncOverlayCssSize() {
   const cw = video.clientWidth || 0;
   const ch = video.clientHeight || 0;
@@ -44,48 +139,25 @@ function syncOverlayCssSize() {
   overlay.style.background = "transparent";
 }
 
-// Keep overlay aligned to the displayed video size.
 try {
   const ro = new ResizeObserver(() => syncOverlayCssSize());
   ro.observe(video);
   window.addEventListener("resize", () => syncOverlayCssSize(), { passive: true });
-} catch (e) {
-  // ResizeObserver may be unavailable in some embedded browsers; we still sync on load.
+} catch (e) { }
+
+// ---- Status ----
+function setStatus(key, extra = "") {
+  const msg = t(key) + (extra ? " " + extra : "");
+  statusEl.textContent = msg;
+  statusEl.dataset.statusKey = key;
+  statusEl.dataset.statusExtra = extra;
+
+  const isActive = ["statusLoading", "statusAnalyzing"].includes(key);
+  const isError = key === "statusError";
+  statusDot.className = "status-dot" + (isActive ? " active" : isError ? " error" : "");
 }
 
-
-const statusEl = el("status");
-const vidInfo = el("vidInfo");
-
-const btnPick = el("btnPick");
-const btnClearPts = el("btnClearPts");
-const presetEl = el("preset");
-const realMmEl = el("realMm");
-const btnSetScale = el("btnSetScale");
-const pxDistEl = el("pxDist");
-const scaleEl = el("scale");
-
-const resultsEl = el("results");
-const btnCopy = el("btnCopy");
-const chkOverlay = el("chkOverlay");
-const legendEl = el("legend");
-
-let poseLandmarker = null;
-let running = false;
-
-let videoUrl = null;
-
-// Calibration
-let picking = false;
-let points = []; // [{x,y}] in canvas coords
-let pxPerMm = null;
-
-// Analysis frames (stored for replay overlay)
-let analyzedFrames = []; // [{t, side, lms, kneeAng, hipAng, elbowAng, torsoAng, vis, ankleX, kneeX}]
-let replayRAF = null;
-let lastReplayIdx = 0;
-
-// Model landmark indices (MediaPipe Pose)
+// ---- Pose model ----
 const LM = {
   left_shoulder: 11, right_shoulder: 12,
   left_elbow: 13, right_elbow: 14,
@@ -95,19 +167,13 @@ const LM = {
   left_ankle: 27, right_ankle: 28
 };
 
-// Choose one side: use the side with better visibility per frame.
-// We'll compute both and take whichever has higher min visibility.
 function pickSide(lms) {
-  const left = ["left_shoulder","left_hip","left_knee","left_ankle"].map(k => lms[LM[k]]?.visibility ?? 0);
-  const right = ["right_shoulder","right_hip","right_knee","right_ankle"].map(k => lms[LM[k]]?.visibility ?? 0);
-  const minL = Math.min(...left);
-  const minR = Math.min(...right);
-  return (minR > minL) ? "right" : "left";
+  const left = ["left_shoulder", "left_hip", "left_knee", "left_ankle"].map(k => lms[LM[k]]?.visibility ?? 0);
+  const right = ["right_shoulder", "right_hip", "right_knee", "right_ankle"].map(k => lms[LM[k]]?.visibility ?? 0);
+  return (Math.min(...right) > Math.min(...left)) ? "right" : "left";
 }
 
-function getP(lms, name) {
-  return lms?.[LM[name]] ?? null;
-}
+function getP(lms, name) { return lms?.[LM[name]] ?? null; }
 
 function angleABC(a, b, c) {
   const ba = { x: a.x - b.x, y: a.y - b.y };
@@ -122,7 +188,6 @@ function angleABC(a, b, c) {
 }
 
 function torsoAngle(hip, shoulder) {
-  // 0 = horizontal, 90 = vertical
   const dx = shoulder.x - hip.x;
   const dy = shoulder.y - hip.y;
   let ang = Math.abs((Math.atan2(dy, dx) * 180) / Math.PI);
@@ -131,40 +196,39 @@ function torsoAngle(hip, shoulder) {
   return ang;
 }
 
-function drawFrame() {
-  ctx.clearRect(0, 0, overlay.width, overlay.height);
-  // draw calibration points
-  if (points.length) {
-    ctx.save();
-    ctx.fillStyle = "lime";
-    ctx.strokeStyle = "lime";
-    ctx.lineWidth = 2;
-    for (const p of points) {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    if (points.length === 2) {
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      ctx.lineTo(points[1].x, points[1].y);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
+function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+
+function fmt(x, digits = 1) {
+  if (x == null || Number.isNaN(x)) return "—";
+  return Number(x).toFixed(digits);
 }
 
-function setOverlayPointerEvents(enabled) {
-  overlay.style.pointerEvents = enabled ? "auto" : "none";
+function pxDistance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+function mean(arr) {
+  if (!arr.length) return null;
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
 }
 
-
-// ---- Overlay drawing for fit measures ----
-function toPx(p) {
-  return { x: p.x * overlay.width, y: p.y * overlay.height };
+function percentile(arr, q) {
+  if (!arr.length) return null;
+  const a = [...arr].sort((x, y) => x - y);
+  const idx = (a.length - 1) * q;
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return a[lo];
+  return a[lo] + (a[hi] - a[lo]) * (idx - lo);
 }
 
-function drawSegment(a, b, color, width=4) {
+function mmOrNA(mm) {
+  if (mm == null || Number.isNaN(mm)) return "—";
+  return `${Math.round(mm)} mm`;
+}
+
+// ---- Canvas drawing ----
+function toPx(p) { return { x: p.x * overlay.width, y: p.y * overlay.height }; }
+
+function drawSegment(a, b, color, width = 4) {
   if (!a || !b) return;
   const A = toPx(a), B = toPx(b);
   ctx.save();
@@ -177,7 +241,7 @@ function drawSegment(a, b, color, width=4) {
   ctx.restore();
 }
 
-function drawPoint(p, color, r=6) {
+function drawPoint(p, color, r = 6) {
   if (!p) return;
   const P = toPx(p);
   ctx.save();
@@ -192,58 +256,73 @@ function drawLabel(p, text, color) {
   if (!p) return;
   const P = toPx(p);
   ctx.save();
-  ctx.font = "14px system-ui, sans-serif";
-  ctx.fillStyle = "rgba(0,0,0,0.65)";
-  const pad = 4;
+  ctx.font = "bold 13px Inter, system-ui, sans-serif";
+  const pad = 5;
   const w = ctx.measureText(text).width;
-  ctx.fillRect(P.x + 10, P.y - 18, w + pad*2, 18);
+  ctx.fillStyle = "rgba(10,12,20,0.8)";
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(P.x + 10, P.y - 20, w + pad * 2, 22, 6);
+    ctx.fill();
+  } else {
+    ctx.fillRect(P.x + 10, P.y - 20, w + pad * 2, 22);
+  }
   ctx.fillStyle = color;
-  ctx.fillText(text, P.x + 10 + pad, P.y - 5);
+  ctx.fillText(text, P.x + 10 + pad, P.y - 4);
   ctx.restore();
 }
 
-function classifyKnee(k) {
-  if (k == null) return null;
-  // Road fit starter "good" band (adjustable): 140-150
-  if (k >= 140 && k <= 150) return "good";
-  return "bad";
-}
-function classifyElbow(e) {
-  if (e == null) return null;
-  // Slight bend good; locked/cramped bad
-  if (e >= 150 && e <= 170) return "good";
-  return "bad";
-}
-function classifyTorso(t) {
-  if (t == null) return null;
-  // Broad road range; too low or too upright flagged
-  if (t >= 25 && t <= 55) return "good";
-  return "bad";
-}
-function classifyHip(h) {
-  if (h == null) return null;
-  // Very approximate; keep broad
-  if (h >= 70 && h <= 105) return "good";
-  return "bad";
+function drawCalibPoints() {
+  if (!points.length) return;
+  ctx.save();
+  for (const p of points) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+    ctx.fillStyle = "#4f7df7";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.5)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  if (points.length === 2) {
+    ctx.strokeStyle = "rgba(79,125,247,0.6)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    ctx.lineTo(points[1].x, points[1].y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.restore();
 }
 
-function legendHTML() {
-  return [
-    `<div>✅ Knee @ BDC: <span class="k">140–150°</span></div>`,
-    `<div>✅ Elbow: <span class="k">150–170°</span> (avoid locked &gt;170°)</div>`,
-    `<div>✅ Torso: <span class="k">25–55°</span> (discipline-dependent)</div>`,
-    `<div>✅ Hip: <span class="k">70–105°</span> (broad)</div>`,
-    `<div class="small muted" style="margin-top:6px;">These are starter thresholds for a road-fit MVP. We can add profiles (race/endurance) later.</div>`
-  ].join("");
+function drawFrame() {
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  drawCalibPoints();
 }
+
+function setOverlayPointerEvents(enabled) {
+  overlay.style.pointerEvents = enabled ? "auto" : "none";
+}
+
+// ---- Classify ----
+function classifyKnee(k) { return k == null ? null : (k >= 140 && k <= 150) ? "good" : "bad"; }
+function classifyElbow(e) { return e == null ? null : (e >= 150 && e <= 170) ? "good" : "bad"; }
+function classifyTorso(v) { return v == null ? null : (v >= 25 && v <= 55) ? "good" : "bad"; }
+function classifyHip(h) { return h == null ? null : (h >= 70 && h <= 105) ? "good" : "bad"; }
+
+const GREEN = "#22c55e";
+const RED = "#ef4444";
+const AMBER = "#f59e0b";
+function colorOf(cls) { return cls === "good" ? GREEN : cls === "bad" ? RED : AMBER; }
 
 function drawFitOverlay(last) {
   if (!last?.lms) return;
   ctx.clearRect(0, 0, overlay.width, overlay.height);
-  // Video itself is visible underneath; canvas draws only overlay.
-
   const side = last.side;
-
   const shoulder = getP(last.lms, `${side}_shoulder`);
   const hip = getP(last.lms, `${side}_hip`);
   const knee = getP(last.lms, `${side}_knee`);
@@ -251,74 +330,44 @@ function drawFitOverlay(last) {
   const elbow = getP(last.lms, `${side}_elbow`);
   const wrist = getP(last.lms, `${side}_wrist`);
 
-  // Colors
-  const GREEN = "#1bb35e";
-  const RED = "#e43d30";
-  const AMBER = "#f0a500";
-
   const kneeCls = classifyKnee(last.kneeAng);
   const elbowCls = classifyElbow(last.elbowAng);
   const torsoCls = classifyTorso(last.torsoAng);
   const hipCls = classifyHip(last.hipAng);
 
-  const kneeColor = kneeCls === "good" ? GREEN : (kneeCls === "bad" ? RED : AMBER);
-  const elbowColor = elbowCls === "good" ? GREEN : (elbowCls === "bad" ? RED : AMBER);
-  const torsoColor = torsoCls === "good" ? GREEN : (torsoCls === "bad" ? RED : AMBER);
-  const hipColor = hipCls === "good" ? GREEN : (hipCls === "bad" ? RED : AMBER);
+  drawSegment(hip, shoulder, colorOf(torsoCls), 5);
+  drawSegment(shoulder, elbow, colorOf(elbowCls), 4);
+  drawSegment(elbow, wrist, colorOf(elbowCls), 4);
+  drawSegment(hip, knee, colorOf(kneeCls), 5);
+  drawSegment(knee, ankle, colorOf(kneeCls), 5);
+  [shoulder, hip, knee, ankle, elbow, wrist].forEach(p => drawPoint(p, "rgba(255,255,255,0.9)", 5));
 
-  // Skeleton segments
-  drawSegment(hip, shoulder, torsoColor, 6);
-  drawSegment(shoulder, elbow, elbowColor, 5);
-  drawSegment(elbow, wrist, elbowColor, 5);
-  drawSegment(hip, knee, kneeColor, 6);
-  drawSegment(knee, ankle, kneeColor, 6);
-
-  // Points
-  [shoulder, hip, knee, ankle, elbow, wrist].forEach(p => drawPoint(p, "rgba(255,255,255,0.85)", 5));
-
-  // Labels
-  drawLabel(knee, `Knee ${fmt(last.kneeAng,1)}°`, kneeColor);
-  drawLabel(elbow, `Elbow ${fmt(last.elbowAng,1)}°`, elbowColor);
-  drawLabel(hip, `Hip ${fmt(last.hipAng,1)}°`, hipColor);
-  // Put torso label near mid-torso
+  drawLabel(knee, `Knee ${fmt(last.kneeAng, 1)}°`, colorOf(kneeCls));
+  drawLabel(elbow, `Elbow ${fmt(last.elbowAng, 1)}°`, colorOf(elbowCls));
+  drawLabel(hip, `Hip ${fmt(last.hipAng, 1)}°`, colorOf(hipCls));
   if (hip && shoulder) {
-    const mid = { x: (hip.x + shoulder.x)/2, y: (hip.y + shoulder.y)/2 };
-    drawLabel(mid, `Torso ${fmt(last.torsoAng,1)}°`, torsoColor);
+    const mid = { x: (hip.x + shoulder.x) / 2, y: (hip.y + shoulder.y) / 2 };
+    drawLabel(mid, `Torso ${fmt(last.torsoAng, 1)}°`, colorOf(torsoCls));
   }
-
-  // Redraw calibration points (if any) on top
-  if (points.length) {
-    ctx.save();
-    ctx.fillStyle = "lime";
-    ctx.strokeStyle = "lime";
-    ctx.lineWidth = 2;
-    for (const p of points) {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    if (points.length === 2) {
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      ctx.lineTo(points[1].x, points[1].y);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-}
-// ---- end overlay drawing ----
-
-function setStatus(s) { statusEl.textContent = s; }
-
-function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
-
-function fmt(x, digits=1) {
-  if (x == null || Number.isNaN(x)) return "—";
-  return Number(x).toFixed(digits);
+  drawCalibPoints();
 }
 
-function pxDistance(a, b) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
+// ---- Calibration UI ----
+function updatePickStatusText() {
+  if (!pickStatusText) return;
+  if (points.length === 0) {
+    pickStatusText.innerHTML = t("pickWaiting");
+    pickDot1.classList.remove("set"); pickDot1.textContent = "P1";
+    pickDot2.classList.remove("set"); pickDot2.textContent = "P2";
+  } else if (points.length === 1) {
+    pickStatusText.innerHTML = t("pickPoint2");
+    pickDot1.classList.add("set"); pickDot1.textContent = "✓";
+    pickDot2.classList.remove("set"); pickDot2.textContent = "P2";
+  } else {
+    pickStatusText.innerHTML = t("pickDone");
+    pickDot1.classList.add("set"); pickDot1.textContent = "✓";
+    pickDot2.classList.add("set"); pickDot2.textContent = "✓";
+  }
 }
 
 function updateCalibrationUI() {
@@ -332,21 +381,21 @@ function updateCalibrationUI() {
   }
   scaleEl.textContent = pxPerMm ? `${pxPerMm.toFixed(4)}` : "—";
   btnClearPts.disabled = points.length === 0;
+  updatePickStatusText();
 }
 
+// ---- Model loading ----
 async function loadModel() {
   if (poseLandmarker) return;
   try {
-    setStatus("Loading pose runtime…");
+    setStatus("statusLoading");
     await loadVision();
   } catch (e) {
     console.error(e);
-    setStatus("Failed to load pose runtime. Check DevTools Console / network blocks.");
+    setStatus("statusError");
     throw e;
   }
-
-  setStatus("Loading pose model…");
-  // Try multiple CDN bases for the WASM bundle.
+  setStatus("statusAnalyzing");
   const wasmBases = [
     "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm",
     "https://unpkg.com/@mediapipe/tasks-vision@0.10.14/wasm",
@@ -357,11 +406,9 @@ async function loadModel() {
     try {
       filesetResolver = await vision.FilesetResolver.forVisionTasks(base);
       break;
-    } catch (e) {
-      lastErr = e;
-    }
+    } catch (e) { lastErr = e; }
   }
-  if (!filesetResolver) throw lastErr ?? new Error("Failed to load MediaPipe WASM bundle");
+  if (!filesetResolver) throw lastErr ?? new Error("Failed to load MediaPipe WASM");
   poseLandmarker = await vision.PoseLandmarker.createFromOptions(filesetResolver, {
     baseOptions: {
       modelAssetPath:
@@ -370,9 +417,9 @@ async function loadModel() {
     runningMode: "VIDEO",
     numPoses: 1
   });
-  setStatus("Model ready.");
 }
 
+// ---- Video validation ----
 function validateVideoLoaded() {
   return video.src && video.readyState >= 1 && Number.isFinite(video.duration) && video.duration > 0;
 }
@@ -383,42 +430,58 @@ function enableControls() {
   btnPick.disabled = !validateVideoLoaded();
 }
 
+// ---- File input ----
 fileEl.addEventListener("change", () => {
   const f = fileEl.files?.[0];
   btnLoad.disabled = !f;
-  if (f) vidInfo.textContent = `${f.name}`;
+  if (f) {
+    fileName.textContent = f.name;
+    fileMetaText.textContent = `${(f.size / 1e6).toFixed(1)} MB`;
+    fileInfo.classList.add("visible");
+    uploadZone.classList.add("has-file");
+  }
 });
 
-// Initialize legend
-if (legendEl) legendEl.innerHTML = legendHTML();
+uploadZone.addEventListener("dragover", (e) => { e.preventDefault(); uploadZone.classList.add("drag-over"); });
+uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("drag-over"));
+uploadZone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove("drag-over");
+  const f = e.dataTransfer.files?.[0];
+  if (f && f.type.startsWith("video/")) {
+    fileEl.files = e.dataTransfer.files;
+    fileEl.dispatchEvent(new Event("change"));
+  }
+});
 
+// ---- Load button ----
 btnLoad.addEventListener("click", async () => {
   const f = fileEl.files?.[0];
   if (!f) return;
-
   if (videoUrl) URL.revokeObjectURL(videoUrl);
   videoUrl = URL.createObjectURL(f);
   video.src = videoUrl;
-
-  setStatus("Loading video…");
-  await new Promise((res) => {
-    video.onloadedmetadata = () => res();
-  });
-
-  // Set overlay size to maintain aspect ratio (fit width 960)
+  setStatus("statusLoading");
+  await new Promise((res) => { video.onloadedmetadata = () => res(); });
   const w = 960;
   const ar = video.videoHeight / video.videoWidth;
   overlay.width = w;
   overlay.height = Math.round(w * ar);
   syncOverlayCssSize();
-
-  vidInfo.textContent = `Loaded • ${video.duration.toFixed(1)}s • ${video.videoWidth}×${video.videoHeight}`;
-  setStatus("Video loaded.");
+  fileMetaText.textContent = `${video.duration.toFixed(1)}s · ${video.videoWidth}×${video.videoHeight}`;
+  setStatus("statusLoaded");
   drawFrame();
-
   enableControls();
+  el("player").style.display = "block";
+  overlayToggleRow.style.display = "flex";
+  unlockStep(2);
+  unlockStep(3);
+  markStepComplete(1);
+  el("resultsCard").style.display = "block";
+  el("exportCard").style.display = "block";
 });
 
+// ---- Reset ----
 btnReset.addEventListener("click", () => {
   if (videoUrl) URL.revokeObjectURL(videoUrl);
   videoUrl = null;
@@ -426,7 +489,6 @@ btnReset.addEventListener("click", () => {
   video.load();
   poseLandmarker = null;
   running = false;
-
   picking = false;
   points = [];
   pxPerMm = null;
@@ -435,9 +497,8 @@ btnReset.addEventListener("click", () => {
 
   pxDistEl.textContent = "—";
   scaleEl.textContent = "—";
-  resultsEl.textContent = "Run analysis to see angles + suggestions.";
-  vidInfo.textContent = "No video";
-  setStatus("Idle");
+  resultsEl.innerHTML = `<span style="color:var(--text3);">${t("resultsWait")}</span>`;
+  setStatus("statusIdle");
 
   btnLoad.disabled = !(fileEl.files?.[0]);
   btnGrab.disabled = true;
@@ -447,19 +508,45 @@ btnReset.addEventListener("click", () => {
   btnSetScale.disabled = true;
   btnCopy.disabled = true;
 
-  setOverlayPointerEvents(false);
+  fileInfo.classList.remove("visible");
+  uploadZone.classList.remove("has-file");
+  el("player").style.display = "none";
+  overlayToggleRow.style.display = "none";
+  el("resultsCard").style.display = "none";
+  el("exportCard").style.display = "none";
 
+  progressBar.style.width = "0%";
+  progressDetail.textContent = "0%";
+  analysisProgress.style.display = "none";
+
+  setOverlayPointerEvents(false);
   drawFrame();
+
+  stepUnlocked = [true, false, false, false];
+  for (let i = 1; i <= 4; i++) {
+    const tab = el(`tab${i}`);
+    if (tab) {
+      tab.classList.remove("completed", "active", "disabled");
+      const num = tab.querySelector(".step-num");
+      if (num) num.textContent = i;
+      if (i === 1) tab.classList.add("active");
+      else tab.classList.add("disabled");
+    }
+  }
+  placePlayer(null);
+  goToStep(1);
+  updateCalibrationUI();
 });
 
+// ---- Grab calibration frame ----
 btnGrab.addEventListener("click", async () => {
   if (!validateVideoLoaded()) return;
-  // Pause and draw current frame
   video.pause();
   drawFrame();
-  setStatus("Calibration frame grabbed (paused).");
+  setStatus("statusGrabbed");
 });
 
+// ---- Pick points ----
 btnPick.addEventListener("click", () => {
   if (!validateVideoLoaded()) return;
   picking = true;
@@ -468,7 +555,7 @@ btnPick.addEventListener("click", () => {
   updateCalibrationUI();
   drawFrame();
   setOverlayPointerEvents(true);
-  setStatus("Pick 2 points on the frame (click on the image).");
+  setStatus("statusPickMode");
 });
 
 btnClearPts.addEventListener("click", () => {
@@ -476,7 +563,7 @@ btnClearPts.addEventListener("click", () => {
   pxPerMm = null;
   updateCalibrationUI();
   drawFrame();
-  setStatus("Cleared calibration points.");
+  setStatus("statusClearPts");
 });
 
 overlay.addEventListener("click", (evt) => {
@@ -484,19 +571,18 @@ overlay.addEventListener("click", (evt) => {
   const rect = overlay.getBoundingClientRect();
   const x = (evt.clientX - rect.left) * (overlay.width / rect.width);
   const y = (evt.clientY - rect.top) * (overlay.height / rect.height);
-  points.push({x,y});
+  points.push({ x, y });
   if (points.length > 2) points = [points[1], points[2]];
   drawFrame();
   updateCalibrationUI();
   if (points.length === 2) {
-    setStatus("2 points picked. Enter real distance (mm) and click Set scale.");
+    picking = false;
+    setOverlayPointerEvents(false);
   }
 });
 
 realMmEl.addEventListener("input", updateCalibrationUI);
 
-// Presets simply fill the "Real distance (mm)" box.
-// The user still picks 2 points on the frame that match that real-world distance.
 presetEl?.addEventListener("change", () => {
   const v = presetEl.value;
   if (!v) return;
@@ -513,32 +599,14 @@ btnSetScale.addEventListener("click", () => {
   picking = false;
   setOverlayPointerEvents(false);
   updateCalibrationUI();
-  setStatus(`Scale set: ${pxPerMm.toFixed(4)} px/mm`);
+  setStatus("statusScaleSet", `${pxPerMm.toFixed(4)} px/mm`);
+  markStepComplete(2);
 });
 
-function toCanvasXY(p) {
-  return { x: p.x * overlay.width, y: p.y * overlay.height };
-}
-
-function mean(arr) {
-  if (!arr.length) return null;
-  return arr.reduce((a,b)=>a+b,0) / arr.length;
-}
-
-function percentile(arr, q) {
-  if (!arr.length) return null;
-  const a = [...arr].sort((x,y)=>x-y);
-  const idx = (a.length - 1) * q;
-  const lo = Math.floor(idx);
-  const hi = Math.ceil(idx);
-  if (lo === hi) return a[lo];
-  return a[lo] + (a[hi]-a[lo])*(idx-lo);
-}
-
+// ---- Replay overlay ----
 function nearestFrameIdx(t) {
   const a = analyzedFrames;
   if (!a.length) return -1;
-  // Fast path: start search near last index (playback is monotonic)
   let i = lastReplayIdx;
   if (i < 0) i = 0;
   if (i >= a.length) i = a.length - 1;
@@ -547,7 +615,6 @@ function nearestFrameIdx(t) {
   } else {
     while (i - 1 >= 0 && a[i - 1].t >= t) i--;
   }
-  // Choose closer of i and i+1
   let best = i;
   if (i + 1 < a.length) {
     const d0 = Math.abs(a[i].t - t);
@@ -559,20 +626,18 @@ function nearestFrameIdx(t) {
 }
 
 function renderPlaybackOverlay() {
-  if (!chkOverlay?.checked) {
-    ctx.clearRect(0, 0, overlay.width, overlay.height);
-    return;
-  }
+  const chk = el("chkOverlay4");
+  if (!chk?.checked) { ctx.clearRect(0, 0, overlay.width, overlay.height); return; }
   const idx = nearestFrameIdx(video.currentTime);
   if (idx < 0) return;
-  // Clear and draw overlay only
   ctx.clearRect(0, 0, overlay.width, overlay.height);
   drawFitOverlay(analyzedFrames[idx]);
 }
 
 function startReplayLoop() {
   stopReplayLoop();
-  if (!chkOverlay?.checked) return;
+  const chk = el("chkOverlay4");
+  if (!chk?.checked) return;
   const tick = () => {
     renderPlaybackOverlay();
     if (!video.paused && !video.ended) {
@@ -587,69 +652,66 @@ function startReplayLoop() {
 }
 
 function stopReplayLoop() {
-  if (replayRAF) {
-    cancelAnimationFrame(replayRAF);
-    replayRAF = null;
+  if (replayRAF) { cancelAnimationFrame(replayRAF); replayRAF = null; }
+}
+
+el("chkOverlay4")?.addEventListener("change", () => {
+  const chk = el("chkOverlay4");
+  if (chk.checked) {
+    if (!analyzedFrames.length) { chk.checked = false; return; }
+    renderPlaybackOverlay();
+    if (!video.paused && !video.ended) startReplayLoop();
+  } else {
+    stopReplayLoop();
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    drawFrame();
   }
-}
+});
 
-function reportBlock(title, lines) {
-  return `<div style="margin:10px 0;">
-    <div><b>${title}</b></div>
-    <div class="muted">${lines.join("<br/>")}</div>
-  </div>`;
-}
+video.addEventListener("play", () => { if (el("chkOverlay4")?.checked) startReplayLoop(); });
+video.addEventListener("pause", () => { stopReplayLoop(); if (el("chkOverlay4")?.checked) renderPlaybackOverlay(); });
+video.addEventListener("ended", () => { stopReplayLoop(); if (el("chkOverlay4")?.checked) renderPlaybackOverlay(); });
+video.addEventListener("seeked", () => { lastReplayIdx = 0; if (el("chkOverlay4")?.checked) renderPlaybackOverlay(); });
 
-function mmOrNA(mm) {
-  if (mm == null || Number.isNaN(mm)) return "—";
-  return `${Math.round(mm)} mm`;
-}
-
+// ---- Analysis ----
 btnAnalyze.addEventListener("click", async () => {
   if (!validateVideoLoaded()) return;
-  await loadModel();
-
+  goToStep(3);
+  analysisProgress.style.display = "block";
+  try { await loadModel(); }
+  catch (e) { setStatus("statusError"); analysisProgress.style.display = "none"; return; }
   if (running) return;
   running = true;
+  btnAnalyze.disabled = true;
 
-  // Processing parameters (MVP)
-  const stepSec = 0.10; // 10 fps sampling
-  const maxSec = Math.min(video.duration, 90); // cap
-  const startSec = 0.0;
-
-  setStatus("Analyzing… (sampling frames)");
-  resultsEl.innerHTML = `<div class="muted">Analyzing…</div>`;
+  const stepSec = 0.10;
+  const maxSec = Math.min(video.duration, 90);
+  setStatus("statusAnalyzing");
+  resultsEl.innerHTML = `<span style="color:var(--text3);">${t("analyzing")}</span>`;
   btnCopy.disabled = true;
 
-  // Collect per-frame measurements
   const frames = [];
   let lastGood = null;
   let maxKneeFrame = null;
-
   let good = 0;
   let total = 0;
 
-  // Ensure paused while seeking
   video.pause();
-
-  // Helper: seek reliably
-  const seekTo = (t) => new Promise((res) => {
-    const clamped = clamp(t, 0, Math.max(0, video.duration - 0.001));
+  const seekTo = (sec) => new Promise((res) => {
+    const clamped = clamp(sec, 0, Math.max(0, video.duration - 0.001));
     video.currentTime = clamped;
     video.onseeked = () => res();
   });
 
-  for (let t = startSec; t <= maxSec; t += stepSec) {
+  for (let sec = 0; sec <= maxSec; sec += stepSec) {
     total += 1;
-    await seekTo(t);
-
+    await seekTo(sec);
     const ts = performance.now();
     const res = poseLandmarker.detectForVideo(video, ts);
     const lms = res?.landmarks?.[0];
     if (!lms) continue;
 
     const side = pickSide(lms);
-
     const shoulder = getP(lms, `${side}_shoulder`);
     const hip = getP(lms, `${side}_hip`);
     const knee = getP(lms, `${side}_knee`);
@@ -661,232 +723,175 @@ btnAnalyze.addEventListener("click", async () => {
       shoulder?.visibility ?? 0, hip?.visibility ?? 0, knee?.visibility ?? 0,
       ankle?.visibility ?? 0, elbow?.visibility ?? 0, wrist?.visibility ?? 0
     );
-
     if (vis < 0.55) continue;
 
-    // Angles
     const kneeAng = angleABC(hip, knee, ankle);
     const hipAng = angleABC(shoulder, hip, knee);
     const elbowAng = angleABC(shoulder, elbow, wrist);
     const torsoAng = torsoAngle(hip, shoulder);
 
-    // Keep last good frame for overlay
-    lastGood = { t, side, lms, kneeAng, hipAng, elbowAng, torsoAng };
-
+    lastGood = { sec, side, lms, kneeAng, hipAng, elbowAng, torsoAng };
     if (kneeAng != null && (!maxKneeFrame || kneeAng > (maxKneeFrame.kneeAng ?? -Infinity))) {
-      maxKneeFrame = { t, side, lms, kneeAng, hipAng, elbowAng, torsoAng };
+      maxKneeFrame = { t: sec, side, lms, kneeAng, hipAng, elbowAng, torsoAng };
     }
 
-    // For phase proxy: use ankle x in normalized coords
-    const ankleX = ankle.x;
-    const kneeX = knee.x;
-
-    const frame = { t, side, vis, kneeAng, hipAng, elbowAng, torsoAng, ankleX, kneeX, lms };
+    const frame = { t: sec, side, vis, kneeAng, hipAng, elbowAng, torsoAng, ankleX: ankle.x, kneeX: knee.x, lms };
     frames.push(frame);
-    // Live overlay while analyzing (skeleton + measures)
+
     if (total % 3 === 0) {
       drawFitOverlay(frame);
-      setStatus(`Analyzing… ${Math.min(100, Math.round((t/maxSec)*100))}%`);
+      const pct = Math.min(100, Math.round((sec / maxSec) * 100));
+      progressBar.style.width = pct + "%";
+      progressDetail.textContent = `${pct}%`;
     }
     good += 1;
   }
 
-  // Persist for replay overlay
-  analyzedFrames = frames.slice().sort((a,b)=>a.t-b.t);
+  analyzedFrames = frames.slice().sort((a, b) => a.t - b.t);
   lastReplayIdx = 0;
   drawFrame();
 
   const goodPct = total ? (100 * good / total) : 0;
+  progressBar.style.width = "100%";
+  progressDetail.textContent = "100%";
 
   if (frames.length < 30) {
-    setStatus("Not enough confident frames.");
-    resultsEl.innerHTML = reportBlock("Problem", [
-      `Only ${frames.length} good frames found. Try better lighting, true side view, and keep joints visible.`,
-      `Good frame rate: ${goodPct.toFixed(1)}%`
+    setStatus("statusNotEnough");
+    resultsEl.innerHTML = buildResultBlock(t("rProblem"), [
+      `${frames.length} ${t("rNotEnough")}`,
+      `${t("rGoodRate")} ${goodPct.toFixed(1)}%`
     ]);
     running = false;
+    btnAnalyze.disabled = false;
     return;
   }
 
-  // Estimate BDC knee angle using top 10% knee angles (max extension)
+  // Stats
   const kneeAngles = frames.map(f => f.kneeAng).filter(x => x != null);
   const kneeP90 = percentile(kneeAngles, 0.90);
-  const bdcFrames = frames.filter(f => f.kneeAng != null && f.kneeAng >= kneeP90);
-  const kneeBDC = mean(bdcFrames.map(f => f.kneeAng));
+  const kneeBDC = mean(frames.filter(f => f.kneeAng != null && f.kneeAng >= kneeP90).map(f => f.kneeAng));
 
-  // Estimate 3 o'clock using ankleX max (most forward)
   const ankleXs = frames.map(f => f.ankleX);
   const ankleX95 = percentile(ankleXs, 0.95);
   const threeFrames = frames.filter(f => f.ankleX >= ankleX95);
-  const kopsPx = (() => {
-    if (!threeFrames.length) return null;
-    // knee x - ankle x at that phase, in pixels
-    const diffs = threeFrames.map(f => (f.kneeX - f.ankleX) * overlay.width);
-    return mean(diffs);
-  })();
+  const kopsPx = threeFrames.length ? mean(threeFrames.map(f => (f.kneeX - f.ankleX) * overlay.width)) : null;
 
-  // Other average angles (steady posture)
   const torsoAvg = mean(frames.map(f => f.torsoAng).filter(x => x != null));
   const hipAvg = mean(frames.map(f => f.hipAng).filter(x => x != null));
   const elbowAvg = mean(frames.map(f => f.elbowAng).filter(x => x != null));
 
-  // --- Recommendations (heuristic MVP) ---
-  // Targets (road fit starter)
-  const targetKneeBDC = 145; // degrees
-  const kneeMmPerDeg = 2.5;  // heuristic conversion
-
-  let saddleDeltaMm = null;
-  if (kneeBDC != null) {
-    saddleDeltaMm = (targetKneeBDC - kneeBDC) * kneeMmPerDeg;
-    saddleDeltaMm = clamp(saddleDeltaMm, -20, 20); // conservative
-  }
-
-  // KOPS target: knee roughly over pedal spindle => kneeX - ankleX ~ 0 (proxy)
-  // Note: we use ankle as pedal spindle proxy; sign indicates ahead/behind.
-  let foreAftDeltaMm = null;
-  if (kopsPx != null && pxPerMm) {
-    const kopsMm = kopsPx / pxPerMm;
-    // If knee is ahead of ankle (positive), move saddle back (negative)
-    foreAftDeltaMm = -kopsMm;
-    foreAftDeltaMm = clamp(foreAftDeltaMm, -15, 15);
-  }
-
-  // Reach/stem suggestion: based on elbow angle only (mm mapping is coarse)
-  let stemDeltaMm = null;
-  if (elbowAvg != null) {
-    if (elbowAvg > 170) stemDeltaMm = -15;
-    else if (elbowAvg > 165) stemDeltaMm = -10;
-    else if (elbowAvg < 145) stemDeltaMm = +10;
-    else stemDeltaMm = 0;
-  }
-
-  // If no scale, we can still show mm deltas for saddle height (angle-based) but mark as "estimated".
-  const mmAvailable = !!pxPerMm;
+  const targetKneeBDC = 145;
+  let saddleDeltaMm = kneeBDC != null ? clamp((targetKneeBDC - kneeBDC) * 2.5, -20, 20) : null;
+  let foreAftDeltaMm = (kopsPx != null && pxPerMm) ? clamp(-kopsPx / pxPerMm, -15, 15) : null;
+  let stemDeltaMm = elbowAvg == null ? null : elbowAvg > 170 ? -15 : elbowAvg > 165 ? -10 : elbowAvg < 145 ? 10 : 0;
 
   const warnings = [];
-  if (!pxPerMm) warnings.push("No scale set: only angle-based mm estimate for saddle height; fore-aft needs calibration.");
-  if (goodPct < 40) warnings.push("Low good-frame ratio: results may be noisy.");
-  if (video.duration > 90) warnings.push("Long video: analysis capped at first 90 seconds.");
+  if (!pxPerMm) warnings.push(t("wNoScale"));
+  if (goodPct < 40) warnings.push(t("wLowGood"));
+  if (video.duration > 90) warnings.push(t("wLongVideo"));
 
-  // Render
+  // Build results
   const blocks = [];
-
-  blocks.push(reportBlock("Quality", [
-    `Frames sampled: ${total} • good: ${good} (${goodPct.toFixed(1)}%)`,
-    `Side used: auto (per frame best visibility)`
+  blocks.push(buildResultBlock(t("rQuality"), [
+    `${t("rFrames")}: ${total} &nbsp;·&nbsp; ${t("rGood")}: ${good} (${goodPct.toFixed(1)}%)`,
+    t("rSide")
   ]));
 
-  blocks.push(reportBlock("Angles (road fit)", [
-    `Knee angle @ BDC (estimated): <span class="k">${fmt(kneeBDC,1)}°</span> (target ~${targetKneeBDC}°)`,
-    `Hip angle (avg): <span class="k">${fmt(hipAvg,1)}°</span>`,
-    `Torso angle (avg): <span class="k">${fmt(torsoAvg,1)}°</span>`,
-    `Elbow angle (avg): <span class="k">${fmt(elbowAvg,1)}°</span>`
+  blocks.push(buildMetricGrid([
+    { label: `🦵 ${t("legendKnee")}`, val: fmt(kneeBDC, 1) + "°", cls: classifyKnee(kneeBDC), note: `${t("rTarget")} 140–150°` },
+    { label: `💪 ${t("legendElbow")}`, val: fmt(elbowAvg, 1) + "°", cls: classifyElbow(elbowAvg), note: `${t("rTarget")} 150–170°` },
+    { label: `🏋 ${t("legendTorso")}`, val: fmt(torsoAvg, 1) + "°", cls: classifyTorso(torsoAvg), note: `${t("rTarget")} 25–55°` },
+    { label: `⚙ ${t("legendHip")}`, val: fmt(hipAvg, 1) + "°", cls: classifyHip(hipAvg), note: `${t("rTarget")} 70–105°` },
   ]));
 
   const recLines = [];
-
   if (kneeBDC != null) {
-    const dir = saddleDeltaMm > 0 ? "Raise" : (saddleDeltaMm < 0 ? "Lower" : "Keep");
-    recLines.push(`${dir} saddle height by <span class="k">${mmOrNA(Math.abs(saddleDeltaMm))}</span> (conservative step; re-test).`);
-  } else {
-    recLines.push("Saddle height: — (knee angle not detected reliably).");
-  }
+    const dir = saddleDeltaMm > 0 ? t("rRaise") : saddleDeltaMm < 0 ? t("rLower") : t("rKeep");
+    recLines.push(`${dir} ${t("rSaddleH")} <span class="k">${mmOrNA(Math.abs(saddleDeltaMm))}</span> ${t("rRetest")}`);
+  } else { recLines.push(t("rSaddleHNA")); }
 
   if (kopsPx != null) {
     if (pxPerMm) {
-      const dir = foreAftDeltaMm > 0 ? "Move saddle forward" : (foreAftDeltaMm < 0 ? "Move saddle back" : "Keep");
-      recLines.push(`${dir} by <span class="k">${mmOrNA(Math.abs(foreAftDeltaMm))}</span> (KOPS proxy at ~3 o'clock).`);
-    } else {
-      recLines.push("Saddle fore-aft: needs scale calibration (set px/mm).");
-    }
-  } else {
-    recLines.push("Saddle fore-aft: — (3 o'clock phase not detected reliably).");
-  }
+      const dir = foreAftDeltaMm > 0 ? t("rSaddleFA_fwd") : foreAftDeltaMm < 0 ? t("rSaddleFA_back") : t("rSaddleFA_keep");
+      recLines.push(`${dir} <span class="k">${mmOrNA(Math.abs(foreAftDeltaMm))}</span> ${t("rSaddleFA_kops")}`);
+    } else { recLines.push(t("rSaddleFA_noScale")); }
+  } else { recLines.push(t("rSaddleFA_na")); }
 
   if (stemDeltaMm != null) {
-    if (stemDeltaMm === 0) recLines.push("Reach/stem: looks OK (elbows not locked/cramped).");
-    else if (stemDeltaMm < 0) recLines.push(`Reach/stem: consider a <span class="k">${Math.abs(stemDeltaMm)} mm shorter</span> stem (elbows too open).`);
-    else recLines.push(`Reach/stem: consider a <span class="k">${stemDeltaMm} mm longer</span> stem (elbows very closed).`);
+    if (stemDeltaMm === 0) recLines.push(t("rStem_ok"));
+    else if (stemDeltaMm < 0) recLines.push(`${t("rStem_shorter")} <span class="k">${Math.abs(stemDeltaMm)} ${t("rStem_mm_shorter")}</span> ${t("rStem_elbows_open")}`);
+    else recLines.push(`${t("rStem_longer")} <span class="k">${stemDeltaMm} ${t("rStem_mm_longer")}</span> ${t("rStem_elbows_closed")}`);
   }
-
-  blocks.push(reportBlock("Concrete corrections (starter)", recLines));
+  blocks.push(buildResultBlock(t("rRecs"), recLines));
 
   if (warnings.length) {
-    blocks.push(reportBlock("Warnings", warnings.map(w => `<span class="warn">${w}</span>`)));
+    blocks.push(buildResultBlock(t("rWarnings"), warnings.map(w => `<span style="color:var(--amber);">⚠ ${w}</span>`)));
   }
 
-  // Clipboard report
+  // Clipboard
   const reportText = [
-    "Bike Posture Checker Report",
-    `Video: ${vidInfo.textContent}`,
-    `Frames sampled: ${total}, good: ${good} (${goodPct.toFixed(1)}%)`,
-    `Scale (px/mm): ${pxPerMm ? pxPerMm.toFixed(4) : "N/A"}`,
+    t("clipTitle"),
+    `${t("clipVideo")} ${fileMetaText.textContent}`,
+    `${t("clipFrames")} ${total}, ${t("rGood")}: ${good} (${goodPct.toFixed(1)}%)`,
+    `${t("clipScale")} ${pxPerMm ? pxPerMm.toFixed(4) : t("clipNA")}`,
     "",
-    `Knee @ BDC: ${fmt(kneeBDC,1)}° (target ~${targetKneeBDC}°)`,
-    `Hip avg: ${fmt(hipAvg,1)}°`,
-    `Torso avg: ${fmt(torsoAvg,1)}°`,
-    `Elbow avg: ${fmt(elbowAvg,1)}°`,
+    `${t("clipKnee")} ${fmt(kneeBDC, 1)}° (${t("rTarget")} ~${targetKneeBDC}°)`,
+    `${t("clipHip")} ${fmt(hipAvg, 1)}°`,
+    `${t("clipTorso")} ${fmt(torsoAvg, 1)}°`,
+    `${t("clipElbow")} ${fmt(elbowAvg, 1)}°`,
     "",
-    `Saddle height delta: ${saddleDeltaMm != null ? Math.round(saddleDeltaMm) + " mm" : "N/A"} (positive=raise)`,
-    `Saddle fore-aft delta: ${foreAftDeltaMm != null ? Math.round(foreAftDeltaMm) + " mm" : "N/A"} (positive=forward)`,
-    `Stem suggestion: ${stemDeltaMm != null ? stemDeltaMm + " mm" : "N/A"} (negative=shorter)`,
+    `${t("clipSaddleH")} ${saddleDeltaMm != null ? Math.round(saddleDeltaMm) + " mm" : t("clipNA")} (${t("clipPosRaise")})`,
+    `${t("clipSaddleFA")} ${foreAftDeltaMm != null ? Math.round(foreAftDeltaMm) + " mm" : t("clipNA")} (${t("clipPosFwd")})`,
+    `${t("clipStem")} ${stemDeltaMm != null ? stemDeltaMm + " mm" : t("clipNA")} (${t("clipNegShorter")})`,
     "",
-    ...(warnings.length ? ["Warnings:", ...warnings.map(w => "- " + w)] : [])
+    ...(warnings.length ? [t("clipWarnings"), ...warnings.map(w => "- " + w)] : [])
   ].join("\n");
 
-  resultsEl.innerHTML = blocks.join("\n");
+  resultsEl.innerHTML = blocks.join("");
   btnCopy.disabled = false;
-
   btnCopy.onclick = async () => {
     await navigator.clipboard.writeText(reportText);
-    setStatus("Report copied to clipboard.");
+    setStatus("statusCopied");
   };
 
-  // Draw overlay on the frame where knee angle is highest (max extension)
   try {
     const best = maxKneeFrame || lastGood;
-    if (best) {
-      await seekTo(best.t);
-      drawFitOverlay(best);
-    }
-  } catch (e) {
-    console.warn("Overlay draw failed", e);
-  }
+    if (best) { await seekTo(best.t); drawFitOverlay(best); }
+  } catch (e) { console.warn("Overlay draw failed", e); }
 
-  setStatus("Done.");
+  setStatus("statusDone");
   running = false;
+  btnAnalyze.disabled = false;
+
+  unlockStep(4);
+  markStepComplete(3);
+  goToStep(4);
 });
 
-// Playback overlay controls
-chkOverlay?.addEventListener("change", () => {
-  if (chkOverlay.checked) {
-    // Require analysis frames
-    if (!analyzedFrames.length) {
-      setStatus("Enable overlay: run Analyze first.");
-      chkOverlay.checked = false;
-      return;
-    }
-    renderPlaybackOverlay();
-    if (!video.paused && !video.ended) startReplayLoop();
-  } else {
-    stopReplayLoop();
-    ctx.clearRect(0, 0, overlay.width, overlay.height);
-    drawFrame();
-  }
-});
+// ---- Result builders ----
+function buildResultBlock(title, lines) {
+  return `<div class="result-section"><h4>${title}</h4>${lines.map(l => `<div class="result-line">${l}</div>`).join("")}</div>`;
+}
 
-video.addEventListener("play", () => {
-  if (chkOverlay?.checked) startReplayLoop();
-});
-video.addEventListener("pause", () => {
-  stopReplayLoop();
-  if (chkOverlay?.checked) renderPlaybackOverlay();
-});
-video.addEventListener("ended", () => {
-  stopReplayLoop();
-  if (chkOverlay?.checked) renderPlaybackOverlay();
-});
-video.addEventListener("seeked", () => {
-  lastReplayIdx = 0;
-  if (chkOverlay?.checked) renderPlaybackOverlay();
-});
+function buildMetricGrid(items) {
+  const cards = items.map(({ label, val, cls, note }) =>
+    `<div class="metric-card ${cls ?? ""}">
+      <div class="metric-label">${label}</div>
+      <div class="metric-value ${cls ?? "neutral"}">${val}</div>
+      <div class="metric-note">${note}</div>
+    </div>`).join("");
+  return `<div class="metric-grid">${cards}</div>`;
+}
+
+// ---- Wire up language + step tabs ----
+el("langEn")?.addEventListener("click", () => setLang("en"));
+el("langFr")?.addEventListener("click", () => setLang("fr"));
+el("tab1")?.addEventListener("click", () => goToStep(1));
+el("tab2")?.addEventListener("click", () => goToStep(2));
+el("tab3")?.addEventListener("click", () => goToStep(3));
+el("tab4")?.addEventListener("click", () => goToStep(4));
+el("btnNextAnalyse")?.addEventListener("click", () => goToStep(3));
+
+// ---- Init ----
+updateCalibrationUI();
+setStatus("statusIdle");

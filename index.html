@@ -1,115 +1,1271 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bike Posture Checker (Video Upload)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="pageTitle">Bike Posture Checker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; color: #111; }
-    h1 { font-size: 20px; margin: 0 0 8px; }
-    .sub { color: #444; margin: 0 0 16px; }
-    .grid { display: grid; grid-template-columns: 1fr 380px; gap: 16px; align-items: start; }
-    .panel { border: 1px solid #ddd; border-radius: 14px; padding: 12px; }
-    video { width: 100%; max-width: 960px; border-radius: 12px; background: #000; display:block; object-fit: contain; }
-    canvas { width: 100%; max-width: 960px; border-radius: 12px; background: transparent; display:block; }
-    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .row > * { margin: 4px 0; }
-    input[type="number"] { width: 120px; padding: 6px 8px; border-radius: 10px; border: 1px solid #ccc; }
-    input[type="text"] { width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid #ccc; }
-    button { padding: 8px 10px; border-radius: 12px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .metric { font-size: 14px; margin: 6px 0; }
-    .muted { color: #555; font-size: 13px; }
-    .warn { color: #8a4b00; }
-    .bad { font-weight: 700; }
-    hr { border: none; border-top: 1px solid #eee; margin: 10px 0; }
-    .small { font-size: 12px; color: #666; }
-    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #f4f4f4; font-size: 12px; }
-    .k { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: #f6f6f6; padding: 2px 6px; border-radius: 8px;}
+    /* ===== DESIGN TOKENS ===== */
+    :root {
+      --bg: #0d0f14;
+      --bg2: #13161d;
+      --bg3: #1a1e28;
+      --border: rgba(255, 255, 255, 0.07);
+      --border-hover: rgba(255, 255, 255, 0.15);
+      --accent: #4f7df7;
+      --accent2: #7c3aed;
+      --accent-glow: rgba(79, 125, 247, 0.25);
+      --green: #22c55e;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --text: #f1f3f9;
+      --text2: #9aa0b4;
+      --text3: #5c6380;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ===== HEADER ===== */
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 28px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(79, 125, 247, 0.06), rgba(124, 58, 237, 0.06));
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .app-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .app-logo h1 {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+
+    .app-logo .sub {
+      font-size: 12px;
+      color: var(--text3);
+      font-weight: 400;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Language switcher */
+    .lang-switcher {
+      display: flex;
+      gap: 4px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px;
+    }
+
+    .lang-btn {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      background: transparent;
+      color: var(--text2);
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .lang-btn.active {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      box-shadow: 0 2px 8px var(--accent-glow);
+    }
+
+    /* ===== MAIN LAYOUT ===== */
+    .app-body {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 0;
+      min-height: calc(100vh - 73px);
+    }
+
+    .main-col {
+      padding: 24px;
+      border-right: 1px solid var(--border);
+    }
+
+    .side-col {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ===== WIZARD STEPS ===== */
+    .wizard-steps {
+      display: flex;
+      gap: 0;
+      margin-bottom: 24px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 4px;
+      overflow: hidden;
+    }
+
+    .step-tab {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.25s;
+      position: relative;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      color: var(--text3);
+    }
+
+    .step-tab:hover:not(.active):not(.disabled) {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text2);
+    }
+
+    .step-tab.active {
+      background: linear-gradient(135deg, rgba(79, 125, 247, 0.18), rgba(124, 58, 237, 0.12));
+      color: var(--text);
+      box-shadow: 0 2px 12px rgba(79, 125, 247, 0.15);
+    }
+
+    .step-tab.completed .step-num {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .step-tab.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--bg3);
+      border: 1.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+      transition: all 0.25s;
+    }
+
+    .step-tab.active .step-num {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .step-label {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: border-color 0.2s;
+    }
+
+    .card:hover {
+      border-color: var(--border-hover);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    /* ===== HINT BOXES ===== */
+    .hint-box {
+      background: linear-gradient(135deg, rgba(79, 125, 247, 0.08), rgba(124, 58, 237, 0.04));
+      border: 1px solid rgba(79, 125, 247, 0.2);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-size: 13px;
+      color: var(--text2);
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      line-height: 1.55;
+    }
+
+    .hint-box .hint-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .hint-box.warn {
+      background: rgba(245, 158, 11, 0.08);
+      border-color: rgba(245, 158, 11, 0.25);
+    }
+
+    .hint-box.warn .hint-icon {
+      font-size: 15px;
+    }
+
+    .hint-box.success {
+      background: rgba(34, 197, 94, 0.08);
+      border-color: rgba(34, 197, 94, 0.2);
+    }
+
+    /* ===== UPLOAD ZONE ===== */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 28px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s;
+      position: relative;
+    }
+
+    .upload-zone:hover,
+    .upload-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(79, 125, 247, 0.05);
+    }
+
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .upload-icon {
+      font-size: 36px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .upload-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text2);
+      margin-bottom: 4px;
+    }
+
+    .upload-hint {
+      font-size: 12px;
+      color: var(--text3);
+    }
+
+    .upload-zone.has-file {
+      border-style: solid;
+      border-color: rgba(34, 197, 94, 0.4);
+      background: rgba(34, 197, 94, 0.04);
+    }
+
+    .file-info {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--bg3);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      margin-top: 12px;
+    }
+
+    .file-info.visible {
+      display: flex;
+    }
+
+    .file-info-name {
+      font-size: 13px;
+      font-weight: 500;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-info-meta {
+      font-size: 12px;
+      color: var(--text3);
+      white-space: nowrap;
+    }
+
+    /* ===== VIDEO PLAYER ===== */
+    #player {
+      position: relative;
+      width: 100%;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      background: #000;
+      margin-top: 16px;
+    }
+
+    #video {
+      width: 100%;
+      display: block;
+      border-radius: var(--radius-sm);
+      background: #000;
+      object-fit: contain;
+    }
+
+    #overlay {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      box-shadow: 0 6px 20px rgba(79, 125, 247, 0.4);
+      background: linear-gradient(135deg, #5d87f8, #8b48ee);
+    }
+
+    .btn-danger {
+      border-color: rgba(239, 68, 68, 0.2);
+      color: var(--red);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.08);
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+
+    .btn-success {
+      border-color: rgba(34, 197, 94, 0.25);
+      color: var(--green);
+    }
+
+    .btn-success:hover:not(:disabled) {
+      background: rgba(34, 197, 94, 0.08);
+      border-color: rgba(34, 197, 94, 0.4);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    /* ===== FORM ELEMENTS ===== */
+    label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text2);
+    }
+
+    input[type="number"],
+    select {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+
+    input[type="number"]:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    select option {
+      background: var(--bg3);
+    }
+
+    .form-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    /* ===== STATUS BADGE ===== */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text2);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text3);
+      flex-shrink: 0;
+      transition: all 0.3s;
+    }
+
+    .status-dot.active {
+      background: var(--green);
+      box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+      animation: pulse 1.5s infinite;
+    }
+
+    .status-dot.error {
+      background: var(--red);
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
+    }
+
+    /* ===== METRICS / RESULTS ===== */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .metric-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: border-color 0.2s;
+    }
+
+    .metric-card.good {
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+
+    .metric-card.bad {
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      font-weight: 600;
+    }
+
+    .metric-value {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .metric-value.good {
+      color: var(--green);
+    }
+
+    .metric-value.bad {
+      color: var(--red);
+    }
+
+    .metric-value.neutral {
+      color: var(--text);
+    }
+
+    .metric-note {
+      font-size: 11px;
+      color: var(--text3);
+    }
+
+    /* Progress bar */
+    .progress-wrap {
+      height: 4px;
+      background: var(--bg3);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 999px;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    /* Legend */
+    .legend-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text2);
+    }
+
+    .legend-range {
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      padding: 2px 8px;
+      border-radius: 6px;
+      color: var(--accent);
+    }
+
+    /* Result blocks */
+    .result-section {
+      margin-bottom: 14px;
+    }
+
+    .result-section h4 {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .result-line {
+      font-size: 13px;
+      color: var(--text2);
+      padding: 4px 0;
+      display: flex;
+      gap: 6px;
+      align-items: baseline;
+    }
+
+    .result-line .k {
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 6px;
+      color: var(--text);
+    }
+
+    /* Overlay toggle */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .toggle-row:hover {
+      border-color: var(--border-hover);
+    }
+
+    .toggle {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      left: 2px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--text3);
+      border-radius: 50%;
+      transition: all 0.25s;
+    }
+
+    .toggle input:checked+.toggle-slider {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .toggle input:checked+.toggle-slider::before {
+      left: 18px;
+      background: #fff;
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      color: var(--text2);
+    }
+
+    /* Separator */
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 16px 0;
+    }
+
+    /* Privacy note */
+    .privacy-note {
+      font-size: 11px;
+      color: var(--text3);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* Scrollable side panel */
+    .side-scroll {
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    /* Calibration pick status */
+    .pick-status {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .pick-dot {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 2px dashed var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--text3);
+      transition: all 0.25s;
+    }
+
+    .pick-dot.set {
+      background: rgba(34, 197, 94, 0.1);
+      border-style: solid;
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .app-body {
+        grid-template-columns: 1fr;
+      }
+
+      .main-col {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .wizard-steps {
+        overflow-x: auto;
+      }
+
+      .step-label {
+        display: none;
+      }
+    }
+
+    /* Animations */
+    .fade-in {
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
   </style>
+
+  <!-- i18n: non-module so setLang() is globally accessible -->
+  <script>
+    var TRANSLATIONS = {
+      en: {
+        pageTitle: "Bike Posture Checker", appTitle: "Bike Posture Checker", appSub: "AI-powered road fit analysis",
+        step1Label: "Upload", step2Label: "Calibrate", step3Label: "Analyse", step4Label: "Results",
+        hint1: "Record a <strong>side-view video</strong> of yourself cycling. Keep your full body in frame, use a stable camera, and aim for a 20–40 second clip. Best format: <strong>MP4 (H.264)</strong>.",
+        hint2: "Calibrate so the app knows the real scale of your video. <strong>Pause on a frame</strong> where a known object (e.g. your wheel) is clearly visible, then pick 2 points at its extremities and enter the real distance.",
+        hint2b: "Calibration is <strong>optional</strong> but required for millimetre saddle fore-aft recommendations. Knee angle suggestions always work.",
+        hint3: "The AI will scan your video frame by frame, detect your body joints, and measure your cycling angles. This can take 30–90 seconds depending on video length.",
+        hint3b: "While waiting: ensure the video shows a <strong>true side view</strong> (camera perpendicular to your bike), full body visible, and good lighting.",
+        hint4: "Analysis complete! Review your angles and recommendations in the right panel. Enable the overlay to see your skeleton annotated directly on the video.",
+        uploadLabel: "Click or drag a video here", uploadHint: "MP4, MOV, AVI · max 2 GB",
+        btnLoad: "Load video →", btnReset: "Reset", btnGrab: "⏸ Grab calibration frame", btnPick: "🎯 Pick 2 points",
+        btnClearPts: "🗑 Clear points", btnSetScale: "Set scale ✓", nextAnalyse: "Next: Analyse →",
+        btnAnalyze: "▶ Start Analysis", btnCopy: "Copy report to clipboard", overlayLabel: "Show skeleton overlay during playback",
+        presetLabel: "Quick preset (fills distance):", presetChoose: "— choose —",
+        presetGroupWheel: "Wheel outer diameter (approx)", presetGroupCrank: "Crank length",
+        realDistLabel: "Real distance (mm):", calibHeader: "Calibration Result", pxDistLabel: "Pixel distance:", scaleLabel: "Scale:",
+        pickWaiting: "Click \"Pick 2 points\", then click on the video.", pickPoint1: "Click point 1 on the video.",
+        pickPoint2: "1 point set. Click point 2.", pickDone: "2 points set. Enter distance and click Set scale.",
+        statusIdle: "Idle — upload a video to begin", statusLoading: "Loading video…", statusLoaded: "Video loaded. Proceed to calibration or analysis.",
+        statusGrabbed: "Calibration frame grabbed (paused).", statusPickMode: "Pick-point mode: click on the video.",
+        statusClearPts: "Calibration points cleared.", statusScaleSet: "Scale set:", statusAnalyzing: "Analyzing…",
+        statusDone: "Done ✓", statusError: "Error — check console for details.", statusNotEnough: "Not enough confident frames detected.",
+        statusCopied: "Report copied to clipboard.", legendTitle: "Target Angles", legendKnee: "🦵 Knee (BDC)",
+        legendElbow: "💪 Elbow", legendTorso: "🏋 Torso", legendHip: "⚙ Hip", legendNote: "Starter thresholds for road fit. Race/endurance profiles coming soon.",
+        resultsTitle: "Analysis Results", resultsWait: "Run analysis to see angles + suggestions.", exportTitle: "Export",
+        privacyNote: "Nothing is uploaded. All processing is done locally in your browser.", analyzing: "Analyzing frames…",
+        rQuality: "Quality", rFrames: "Frames sampled", rGood: "good", rSide: "Side used: auto (best visibility per frame)",
+        rAngles: "Angles (road fit)", rKneeBDC: "Knee angle @ BDC (estimated)", rTarget: "target",
+        rHipAvg: "Hip angle (avg)", rTorsoAvg: "Torso angle (avg)", rElbowAvg: "Elbow angle (avg)",
+        rRecs: "Concrete corrections (starter)", rRaise: "Raise", rLower: "Lower", rKeep: "Keep",
+        rSaddleH: "saddle height by", rSaddleHNA: "Saddle height: — (knee angle not detected reliably).", rRetest: "(conservative step; re-test).",
+        rSaddleFA_fwd: "Move saddle forward by", rSaddleFA_back: "Move saddle back by", rSaddleFA_keep: "Keep",
+        rSaddleFA_kops: "(KOPS proxy at ~3 o'clock).", rSaddleFA_noScale: "Saddle fore-aft: needs scale calibration (set px/mm).",
+        rSaddleFA_na: "Saddle fore-aft: — (3 o'clock phase not detected reliably).", rStem_ok: "Reach/stem: looks OK (elbows not locked/cramped).",
+        rStem_shorter: "Reach/stem: consider a", rStem_mm_shorter: "mm shorter", rStem_longer: "Reach/stem: consider a", rStem_mm_longer: "mm longer",
+        rStem_elbows_open: "stem (elbows too open).", rStem_elbows_closed: "stem (elbows very closed).", rWarnings: "Warnings",
+        wNoScale: "No scale set: only angle-based mm estimate for saddle height; fore-aft needs calibration.",
+        wLowGood: "Low good-frame ratio: results may be noisy.", wLongVideo: "Long video: analysis capped at first 90 seconds.",
+        rProblem: "Problem", rNotEnough: "good frames found. Try better lighting, true side view, and keep joints visible.", rGoodRate: "Good frame rate:",
+        clipTitle: "Bike Posture Checker Report", clipVideo: "Video:", clipFrames: "Frames sampled:", clipScale: "Scale (px/mm):",
+        clipKnee: "Knee @ BDC:", clipHip: "Hip avg:", clipTorso: "Torso avg:", clipElbow: "Elbow avg:",
+        clipSaddleH: "Saddle height delta:", clipSaddleFA: "Saddle fore-aft delta:", clipStem: "Stem suggestion:",
+        clipPosRaise: "positive=raise", clipPosFwd: "positive=forward", clipNegShorter: "negative=shorter", clipWarnings: "Warnings:", clipNA: "N/A"
+      },
+      fr: {
+        pageTitle: "Analyseur Posture Vélo", appTitle: "Analyseur Posture Vélo", appSub: "Analyse de position par IA",
+        step1Label: "Charger", step2Label: "Calibrer", step3Label: "Analyser", step4Label: "Résultats",
+        hint1: "Enregistrez une <strong>vidéo de profil</strong> de vous en train de pédaler. Gardez tout le corps dans le cadre, utilisez une caméra stable, visez 20–40 secondes. Format recommandé : <strong>MP4 (H.264)</strong>.",
+        hint2: "Calibrez afin que l'application connaisse l'échelle réelle de votre vidéo. <strong>Mettez en pause sur une image</strong> où un objet connu (ex. votre roue) est bien visible, choisissez 2 points aux extrémités, puis saisissez la distance réelle.",
+        hint2b: "La calibration est <strong>facultative</strong> mais nécessaire pour les recommandations millimètre avant/arrière de selle. Les suggestions d'angle de genou fonctionnent toujours.",
+        hint3: "L'IA va analyser votre vidéo image par image, détecter vos articulations et mesurer vos angles de pédalage. Cela peut prendre 30–90 secondes selon la durée de la vidéo.",
+        hint3b: "En attendant : vérifiez que la vidéo montre un <strong>vrai profil</strong> (caméra perpendiculaire au vélo), corps entier visible, bonne luminosité.",
+        hint4: "Analyse terminée ! Consultez vos angles et recommandations dans le panneau de droite. Activez l'incrustation pour voir votre squelette annoté sur la vidéo.",
+        uploadLabel: "Cliquez ou déposez une vidéo ici", uploadHint: "MP4, MOV, AVI · max 2 Go",
+        btnLoad: "Charger la vidéo →", btnReset: "Réinitialiser", btnGrab: "⏸ Saisir l'image de calibration", btnPick: "🎯 Choisir 2 points",
+        btnClearPts: "🗑 Effacer les points", btnSetScale: "Définir l'échelle ✓", nextAnalyse: "Suivant : Analyser →",
+        btnAnalyze: "▶ Lancer l'analyse", btnCopy: "Copier le rapport", overlayLabel: "Afficher le squelette pendant la lecture",
+        presetLabel: "Préréglage rapide (remplit la distance) :", presetChoose: "— choisir —",
+        presetGroupWheel: "Diamètre extérieur de roue (approx.)", presetGroupCrank: "Longueur de manivelle",
+        realDistLabel: "Distance réelle (mm) :", calibHeader: "Résultat de calibration", pxDistLabel: "Distance en pixels :", scaleLabel: "Échelle :",
+        pickWaiting: "Cliquez sur « Choisir 2 points », puis cliquez sur la vidéo.", pickPoint1: "Cliquez sur le point 1 de la vidéo.",
+        pickPoint2: "Point 1 défini. Cliquez sur le point 2.", pickDone: "2 points définis. Saisissez la distance et cliquez Définir l'échelle.",
+        statusIdle: "En attente — chargez une vidéo pour commencer", statusLoading: "Chargement de la vidéo…", statusLoaded: "Vidéo chargée. Passez à la calibration ou à l'analyse.",
+        statusGrabbed: "Image de calibration saisie (pause).", statusPickMode: "Mode sélection : cliquez sur la vidéo.",
+        statusClearPts: "Points de calibration effacés.", statusScaleSet: "Échelle définie :", statusAnalyzing: "Analyse en cours…",
+        statusDone: "Terminé ✓", statusError: "Erreur — consultez la console.", statusNotEnough: "Pas assez d'images fiables détectées.",
+        statusCopied: "Rapport copié dans le presse-papier.", legendTitle: "Angles cibles", legendKnee: "🦵 Genou (PMB)",
+        legendElbow: "💪 Coude", legendTorso: "🏋 Torse", legendHip: "⚙ Hanche", legendNote: "Seuils de départ pour position route. Profils course/endurance à venir.",
+        resultsTitle: "Résultats de l'analyse", resultsWait: "Lancez l'analyse pour voir les angles et suggestions.", exportTitle: "Exporter",
+        privacyNote: "Aucune donnée envoyée. Tout le traitement est local, dans votre navigateur.", analyzing: "Analyse des images…",
+        rQuality: "Qualité", rFrames: "Images analysées", rGood: "bonnes", rSide: "Côté utilisé : automatique (meilleure visibilité par image)",
+        rAngles: "Angles (position route)", rKneeBDC: "Angle genou au PMB (estimé)", rTarget: "cible",
+        rHipAvg: "Angle hanche (moy.)", rTorsoAvg: "Angle torse (moy.)", rElbowAvg: "Angle coude (moy.)",
+        rRecs: "Corrections concrètes (départ)", rRaise: "Montez", rLower: "Descendez", rKeep: "Conservez",
+        rSaddleH: "la selle de", rSaddleHNA: "Hauteur de selle : — (angle genou non détecté fiablement).", rRetest: "(étape conservatrice ; re-testez).",
+        rSaddleFA_fwd: "Avancez la selle de", rSaddleFA_back: "Reculez la selle de", rSaddleFA_keep: "Conservez",
+        rSaddleFA_kops: "(proxy KOPS à ~3 heures).", rSaddleFA_noScale: "Avant/arrière selle : calibration de l'échelle requise (px/mm).",
+        rSaddleFA_na: "Avant/arrière selle : — (phase 3 heures non détectée fiablement).", rStem_ok: "Reach/potence : OK (coudes non verrouillés).",
+        rStem_shorter: "Reach/potence : envisagez une potence", rStem_mm_shorter: "mm plus courte", rStem_longer: "Reach/potence : envisagez une potence", rStem_mm_longer: "mm plus longue",
+        rStem_elbows_open: "(coudes trop ouverts).", rStem_elbows_closed: "(coudes trop fermés).", rWarnings: "Avertissements",
+        wNoScale: "Pas d'échelle définie : estimation millimétrique de hauteur de selle uniquement par angle ; avant/arrière nécessite calibration.",
+        wLowGood: "Faible ratio d'images fiables : les résultats peuvent être bruités.", wLongVideo: "Longue vidéo : analyse limitée aux 90 premières secondes.",
+        rProblem: "Problème", rNotEnough: "bonnes images trouvées. Essayez un meilleur éclairage, un vrai profil, et gardez les articulations visibles.", rGoodRate: "Taux d'images fiables :",
+        clipTitle: "Rapport Analyseur Posture Vélo", clipVideo: "Vidéo :", clipFrames: "Images analysées :", clipScale: "Échelle (px/mm) :",
+        clipKnee: "Genou PMB :", clipHip: "Hanche moy. :", clipTorso: "Torse moy. :", clipElbow: "Coude moy. :",
+        clipSaddleH: "Delta hauteur selle :", clipSaddleFA: "Delta avant/arrière selle :", clipStem: "Suggestion potence :",
+        clipPosRaise: "positif=monter", clipPosFwd: "positif=avant", clipNegShorter: "négatif=raccourcir", clipWarnings: "Avertissements :", clipNA: "N/D"
+      }
+    };
+
+    var currentLang = "en";
+
+    function t(key) {
+      return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) || (TRANSLATIONS.en && TRANSLATIONS.en[key]) || key;
+    }
+
+    function applyTranslations() {
+      document.title = t("pageTitle");
+      document.documentElement.lang = currentLang;
+      var items = document.querySelectorAll("[data-i18n]");
+      for (var i = 0; i < items.length; i++) {
+        var el = items[i];
+        var key = el.getAttribute("data-i18n");
+        var val = t(key);
+        if (el.tagName === "OPTGROUP") {
+          el.label = val;
+        } else if (el.tagName === "OPTION") {
+          el.textContent = val;
+        } else if (el.id === "status") {
+          // Status is managed dynamically, only translate if we have a key
+          var statusKey = el.dataset.statusKey;
+          if (statusKey) {
+            var extra = el.dataset.statusExtra || "";
+            el.textContent = t(statusKey) + (extra ? " " + extra : "");
+          }
+        } else {
+          el.innerHTML = val;
+        }
+      }
+    }
+
+    function setLang(lang) {
+      currentLang = lang;
+      var enBtn = document.getElementById("langEn");
+      var frBtn = document.getElementById("langFr");
+      if (enBtn) enBtn.classList.toggle("active", lang === "en");
+      if (frBtn) frBtn.classList.toggle("active", lang === "fr");
+      applyTranslations();
+    }
+
+    // Wire up lang buttons once DOM is ready
+    document.addEventListener("DOMContentLoaded", function () {
+      var enBtn = document.getElementById("langEn");
+      var frBtn = document.getElementById("langFr");
+      if (enBtn) enBtn.addEventListener("click", function () { setLang("en"); });
+      if (frBtn) frBtn.addEventListener("click", function () { setLang("fr"); });
+    });
+  </script>
 </head>
+
 <body>
-  <h1>Bike Posture Checker (Road Fit) — Video Upload</h1>
-  <p class="sub">Runs pose locally in your browser. Calibrate using a known measurement visible in the video (no printed targets).</p>
 
-  <div class="grid">
-    <div class="panel">
-      <div class="row">
-        <label><b>1) Upload side-view video:</b></label>
-        <input id="file" type="file" accept="video/*"/>
-        <span id="vidInfo" class="pill">No video</span>
+  <!-- ===== HEADER ===== -->
+  <header class="app-header">
+    <div class="app-logo">
+      <div class="logo-icon">🚴</div>
+      <div>
+        <h1 data-i18n="appTitle">Bike Posture Checker</h1>
+        <div class="sub" data-i18n="appSub">AI-powered road fit analysis</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="lang-switcher">
+        <button class="lang-btn active" id="langEn">EN</button>
+        <button class="lang-btn" id="langFr">FR</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== MAIN LAYOUT ===== -->
+  <div class="app-body">
+
+    <!-- ===== LEFT: VIDEO COLUMN ===== -->
+    <div class="main-col">
+
+      <!-- Step Tabs -->
+      <nav class="wizard-steps" id="wizardSteps">
+        <button class="step-tab active" id="tab1">
+          <span class="step-num">1</span>
+          <span class="step-label" data-i18n="step1Label">Upload</span>
+        </button>
+        <button class="step-tab disabled" id="tab2">
+          <span class="step-num">2</span>
+          <span class="step-label" data-i18n="step2Label">Calibrate</span>
+        </button>
+        <button class="step-tab disabled" id="tab3">
+          <span class="step-num">3</span>
+          <span class="step-label" data-i18n="step3Label">Analyse</span>
+        </button>
+        <button class="step-tab disabled" id="tab4">
+          <span class="step-num">4</span>
+          <span class="step-label" data-i18n="step4Label">Results</span>
+        </button>
+      </nav>
+
+      <!-- STEP 1: Upload -->
+      <div id="stepContent1" class="fade-in">
+        <div class="hint-box" style="margin-bottom:16px;">
+          <span class="hint-icon">💡</span>
+          <span data-i18n="hint1">Record a <strong>side-view video</strong> of yourself cycling. Keep your full body in
+            frame, use a stable camera, and aim for a 20–40 second clip. Best format: <strong>MP4
+              (H.264)</strong>.</span>
+        </div>
+
+        <div class="upload-zone" id="uploadZone">
+          <input id="file" type="file" accept="video/*" />
+          <span class="upload-icon">🎬</span>
+          <div class="upload-label" data-i18n="uploadLabel">Click or drag a video here</div>
+          <div class="upload-hint" data-i18n="uploadHint">MP4, MOV, AVI · max 2 GB</div>
+        </div>
+
+        <div class="file-info" id="fileInfo">
+          <span>🎞️</span>
+          <span class="file-info-name" id="fileName">—</span>
+          <span class="file-info-meta" id="fileMetaText">—</span>
+        </div>
+
+        <div class="btn-row" style="margin-top:14px;">
+          <button class="btn btn-primary" id="btnLoad" disabled data-i18n="btnLoad">Load video →</button>
+          <button class="btn btn-danger" id="btnReset" data-i18n="btnReset">Reset</button>
+        </div>
+
+        <div id="player" style="display:none;">
+          <video id="video" controls playsinline muted style="display:block;"></video>
+          <canvas id="overlay" width="960" height="540"
+            style="pointer-events:none; position:absolute; left:0; top:0; width:100%; height:100%;"></canvas>
+        </div>
+
+        <label class="toggle-row" style="margin-top:12px; display:none;" id="overlayToggleRow">
+          <span class="toggle">
+            <input id="chkOverlay" type="checkbox" />
+            <span class="toggle-slider"></span>
+          </span>
+          <span class="toggle-label" data-i18n="overlayLabel">Show skeleton overlay during playback</span>
+        </label>
       </div>
 
-      <div class="row">
-        <button id="btnLoad" disabled>Load</button>
-        <button id="btnGrab" disabled>Grab calibration frame</button>
-        <button id="btnAnalyze" disabled>Analyze video</button>
-        <button id="btnReset">Reset</button>
+      <!-- STEP 2: Calibrate -->
+      <div id="stepContent2" style="display:none;" class="fade-in">
+        <div class="hint-box" style="margin-bottom:16px;">
+          <span class="hint-icon">📏</span>
+          <span data-i18n="hint2">Calibrate so the app knows the real scale of your video. <strong>Pause on a
+              frame</strong> where a known object (e.g. your wheel) is clearly visible, then pick 2 points at its
+            extremities and enter the real distance.</span>
+        </div>
+
+        <div style="margin-bottom:14px;" class="btn-row">
+          <button class="btn" id="btnGrab" disabled data-i18n="btnGrab">⏸ Grab calibration frame</button>
+          <button class="btn" id="btnPick" disabled data-i18n="btnPick">🎯 Pick 2 points</button>
+          <button class="btn" id="btnClearPts" disabled data-i18n="btnClearPts">🗑 Clear points</button>
+        </div>
+
+        <div class="pick-status">
+          <div class="pick-dot" id="pickDot1">P1</div>
+          <div class="pick-dot" id="pickDot2">P2</div>
+          <span style="font-size:13px; color:var(--text3); align-self:center;" id="pickStatusText"
+            data-i18n="pickWaiting">Click "Pick 2 points", then click on the video.</span>
+        </div>
+
+        <div id="player2"
+          style="margin-top:14px; position:relative; border-radius:12px; overflow:hidden; background:#000;">
+          <!-- mirror of #player — JS will move/show the real player here -->
+        </div>
+
+        <div class="form-group" style="margin-top:14px;">
+          <label data-i18n="presetLabel">Quick preset (fills distance):</label>
+          <select id="preset">
+            <option value="" data-i18n="presetChoose">— choose —</option>
+            <optgroup data-i18n="presetGroupWheel" label="Wheel outer diameter (approx)">
+              <option value="672">700c × 25 (≈ 672 mm)</option>
+              <option value="678">700c × 28 (≈ 678 mm)</option>
+              <option value="686">700c × 32 (≈ 686 mm)</option>
+              <option value="660">650b × 47 (≈ 660 mm)</option>
+            </optgroup>
+            <optgroup data-i18n="presetGroupCrank" label="Crank length">
+              <option value="165">Crank 165 mm</option>
+              <option value="170">Crank 170 mm</option>
+              <option value="172.5">Crank 172.5 mm</option>
+              <option value="175">Crank 175 mm</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <div class="form-row" style="margin-bottom:12px;">
+          <div style="flex:1;">
+            <label style="display:block;margin-bottom:6px;" data-i18n="realDistLabel">Real distance (mm):</label>
+            <input id="realMm" type="number" min="1" step="1" placeholder="e.g., 678" style="max-width:160px;" />
+          </div>
+          <div style="align-self:flex-end;">
+            <button class="btn btn-primary" id="btnSetScale" disabled data-i18n="btnSetScale">Set scale ✓</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:8px;">
+          <div class="card-title"><span class="dot"></span><span data-i18n="calibHeader">Calibration Result</span></div>
+          <div class="result-line">
+            <span data-i18n="pxDistLabel" style="color:var(--text3);">Pixel distance:</span>
+            <span class="k" id="pxDist">—</span>
+          </div>
+          <div class="result-line">
+            <span data-i18n="scaleLabel" style="color:var(--text3);">Scale:</span>
+            <span class="k" id="scale">—</span>
+            <span style="font-size:12px;color:var(--text3);">px/mm</span>
+          </div>
+        </div>
+
+        <div class="hint-box warn" style="margin-top:14px;">
+          <span class="hint-icon">⚠️</span>
+          <span data-i18n="hint2b">Calibration is <strong>optional</strong> but required for millimetre saddle fore-aft
+            recommendations. Knee angle suggestions always work.</span>
+        </div>
+
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn btn-primary" id="btnNextAnalyse" data-i18n="nextAnalyse">Next: Analyse →</button>
+        </div>
       </div>
 
-      <div id="player" style="position:relative; margin-top:10px; max-width:960px; width:100%;">
-        <video id="video" controls playsinline muted style="display:block;"></video>
-        <canvas id="overlay" width="960" height="540" style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none;"></canvas>
+      <!-- STEP 3: Analyse -->
+      <div id="stepContent3" style="display:none;" class="fade-in">
+        <div class="hint-box" style="margin-bottom:16px;">
+          <span class="hint-icon">🤖</span>
+          <span data-i18n="hint3">The AI will scan your video frame by frame, detect your body joints, and measure your
+            cycling angles. This can take 30–90 seconds depending on video length.</span>
+        </div>
+
+        <div class="btn-row" style="margin-bottom:16px;">
+          <button class="btn btn-primary" id="btnAnalyze" disabled data-i18n="btnAnalyze">▶ Start Analysis</button>
+        </div>
+
+        <div id="analysisProgress" style="display:none;">
+          <div style="font-size:13px; color:var(--text2); margin-bottom:6px;" id="progressLabel" data-i18n="analyzing">
+            Analyzing frames…</div>
+          <div class="progress-wrap">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <div style="font-size:12px; color:var(--text3); margin-top:6px;" id="progressDetail">0%</div>
+        </div>
+
+        <div class="hint-box warn" style="margin-top:14px;" id="analysisTips">
+          <span class="hint-icon">💡</span>
+          <span data-i18n="hint3b">While waiting: ensure the video shows a <strong>true side view</strong> (camera
+            perpendicular to your bike), full body visible, and good lighting.</span>
+        </div>
       </div>
 
-      <div class="row" style="margin-top:8px;">
-        <label class="muted"><input id="chkOverlay" type="checkbox"/> Show skeleton + measurements during playback</label>
+      <!-- STEP 4: Results (shown inline in side panel) -->
+      <div id="stepContent4" style="display:none;" class="fade-in">
+        <div class="hint-box success" style="margin-bottom:16px;">
+          <span class="hint-icon">✅</span>
+          <span data-i18n="hint4">Analysis complete! Review your angles and recommendations in the right panel. Enable
+            the overlay to see your skeleton annotated directly on the video.</span>
+        </div>
+
+        <div id="player4wrap" style="position:relative; border-radius:12px; overflow:hidden; background:#000;"></div>
+
+        <label class="toggle-row" style="margin-top:12px;" id="overlayToggleRow4">
+          <span class="toggle">
+            <input id="chkOverlay4" type="checkbox" />
+            <span class="toggle-slider"></span>
+          </span>
+          <span class="toggle-label" data-i18n="overlayLabel">Show skeleton overlay during playback</span>
+        </label>
       </div>
 
-      <p class="small">
-        Tips: true side view, full body visible, stable camera, 20–40s clip. Best compatibility: MP4 (H.264).
-      </p>
     </div>
 
-    <div class="panel">
-      <div class="metric"><b>Status:</b> <span id="status">Idle</span></div>
+    <!-- ===== RIGHT: SIDE PANEL ===== -->
+    <div class="side-col">
 
-      <hr/>
-      <div class="metric"><b>2) Calibration (mm):</b></div>
-      <div class="muted">Click 2 points on the calibration frame below (e.g., wheel diameter endpoints), then enter the real distance in mm.</div>
-      <div class="row">
-        <label>Preset:</label>
-        <select id="preset" style="padding:6px 8px; border-radius:10px; border:1px solid #ccc;">
-          <option value="">— choose —</option>
-          <optgroup label="Wheel outer diameter (approx)">
-            <option value="672">700c × 25 (≈ 672 mm)</option>
-            <option value="678">700c × 28 (≈ 678 mm)</option>
-            <option value="686">700c × 32 (≈ 686 mm)</option>
-            <option value="660">650b × 47 (≈ 660 mm)</option>
-          </optgroup>
-          <optgroup label="Crank length">
-            <option value="165">Crank 165 mm</option>
-            <option value="170">Crank 170 mm</option>
-            <option value="172.5">Crank 172.5 mm</option>
-            <option value="175">Crank 175 mm</option>
-          </optgroup>
-        </select>
+      <!-- Status -->
+      <div class="card">
+        <div class="status-badge" style="width:100%;">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="status" data-i18n="statusIdle">Idle — upload a video to begin</span>
+        </div>
       </div>
-      <div class="row">
-        <button id="btnPick" disabled>Pick 2 points</button>
-        <button id="btnClearPts" disabled>Clear points</button>
-      </div>
-      <div class="row">
-        <label>Real distance (mm):</label>
-        <input id="realMm" type="number" min="1" step="1" placeholder="e.g., 670"/>
-        <button id="btnSetScale" disabled>Set scale</button>
-      </div>
-      <div class="metric">Pixels distance: <span class="k" id="pxDist">—</span></div>
-      <div class="metric">Scale: <span class="k" id="scale">—</span> <span class="muted">(px per mm)</span></div>
 
-      <hr/>
-      <div class="metric"><b>3) Results:</b></div>
-      <div class="metric"><b>Threshold legend (starter):</b></div>
-      <div id="legend" class="muted"></div>
-      <div id="results" class="muted">Run analysis to see angles + suggestions.</div>
+      <!-- Legend -->
+      <div class="card" id="legendCard">
+        <div class="card-title"><span class="dot"></span><span data-i18n="legendTitle">Target Angles</span></div>
+        <div class="legend-rows">
+          <div class="legend-row">
+            <span data-i18n="legendKnee">🦵 Knee (BDC)</span>
+            <span class="legend-range">140–150°</span>
+          </div>
+          <div class="legend-row">
+            <span data-i18n="legendElbow">💪 Elbow</span>
+            <span class="legend-range">150–170°</span>
+          </div>
+          <div class="legend-row">
+            <span data-i18n="legendTorso">🏋 Torso</span>
+            <span class="legend-range">25–55°</span>
+          </div>
+          <div class="legend-row">
+            <span data-i18n="legendHip">⚙ Hip</span>
+            <span class="legend-range">70–105°</span>
+          </div>
+        </div>
+        <div style="font-size:11px; color:var(--text3); margin-top:10px;" data-i18n="legendNote">Starter thresholds for
+          road fit. Race/endurance profiles coming soon.</div>
+      </div>
 
-      <hr/>
-      <div class="metric"><b>Export:</b></div>
-      <button id="btnCopy" disabled>Copy report to clipboard</button>
-      <div class="small muted">Nothing is uploaded anywhere in this MVP.</div>
+      <!-- Results (hidden until analysis done) -->
+      <div class="card side-scroll" id="resultsCard" style="display:none;">
+        <div class="card-title"><span class="dot" style="background:var(--green);"></span><span
+            data-i18n="resultsTitle">Analysis Results</span></div>
+        <div id="results"><span style="color:var(--text3);" data-i18n="resultsWait">Run analysis to see angles +
+            suggestions.</span></div>
+      </div>
+
+      <!-- Export (hidden until done) -->
+      <div class="card" id="exportCard" style="display:none;">
+        <div class="card-title"><span class="dot" style="background:var(--amber);"></span><span
+            data-i18n="exportTitle">Export</span></div>
+        <button class="btn btn-success" id="btnCopy" disabled style="width:100%;">
+          <span>📋</span><span data-i18n="btnCopy">Copy report to clipboard</span>
+        </button>
+        <div class="privacy-note" style="margin-top:10px;">
+          <span>🔒</span><span data-i18n="privacyNote">Nothing is uploaded. All processing is done locally in your
+            browser.</span>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="./app.js?v=2"></script>
 </body>
+
 </html>
