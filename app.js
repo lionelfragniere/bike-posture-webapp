@@ -454,6 +454,9 @@ async function doLoadVideo(f) {
   enableControls();
   el("player").style.display = "block";
   overlayToggleRow.style.display = "flex";
+  // Hide placeholder, show video
+  const placeholder = el("step1Placeholder");
+  if (placeholder) placeholder.style.display = "none";
   unlockStep(2);
   unlockStep(3);
   markStepComplete(1);
@@ -512,9 +515,15 @@ btnReset.addEventListener("click", () => {
   btnClearPts.disabled = true;
   btnSetScale.disabled = true;
   btnCopy.disabled = true;
+  const saveTxtBtn2 = el("btnSaveTxt");
+  if (saveTxtBtn2) saveTxtBtn2.disabled = true;
+  savedReportText = "";
 
   const btnNextCal = el("btnNextCalibrate");
   if (btnNextCal) btnNextCal.style.display = "none";
+  // Show placeholder image again
+  const placeholder = el("step1Placeholder");
+  if (placeholder) placeholder.style.display = "";
 
   fileInfo.classList.remove("visible");
   uploadZone.classList.remove("has-file");
@@ -857,6 +866,9 @@ btnAnalyze.addEventListener("click", async () => {
 
   resultsEl.innerHTML = blocks.join("");
   btnCopy.disabled = false;
+  const saveTxtBtn = el("btnSaveTxt");
+  if (saveTxtBtn) saveTxtBtn.disabled = false;
+  savedReportText = reportText;
   btnCopy.onclick = async () => {
     await navigator.clipboard.writeText(reportText);
     setStatus("statusCopied");
@@ -900,6 +912,20 @@ el("tab3")?.addEventListener("click", () => goToStep(3));
 el("tab4")?.addEventListener("click", () => goToStep(4));
 el("btnNextAnalyse")?.addEventListener("click", () => goToStep(3));
 el("btnNextCalibrate")?.addEventListener("click", () => goToStep(2));
+
+// ---- Save TXT ----
+let savedReportText = "";
+el("btnSaveTxt")?.addEventListener("click", () => {
+  if (!savedReportText) return;
+  const blob = new Blob([savedReportText], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const videoName = (el("fileName")?.textContent || "report").replace(/\.[^.]+$/, "");
+  a.download = `bike_posture_${videoName}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
 
 // ---- Init ----
 updateCalibrationUI();
