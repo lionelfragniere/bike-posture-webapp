@@ -777,7 +777,7 @@ btnAnalyze.addEventListener("click", async () => {
     resultsEl.innerHTML = buildResultBlock(t("rProblem"), [
       `${frames.length} ${t("rNotEnough")}`,
       `${t("rGoodRate")} ${goodPct.toFixed(1)}%`
-    ]);
+    ], true);
     running = false;
     btnAnalyze.disabled = false;
     return;
@@ -824,20 +824,22 @@ btnAnalyze.addEventListener("click", async () => {
   const recLines = [];
   if (kneeBDC != null) {
     const dir = saddleDeltaMm > 0 ? t("rRaise") : saddleDeltaMm < 0 ? t("rLower") : t("rKeep");
-    recLines.push(`${dir} ${t("rSaddleH")} <span class="k">${mmOrNA(Math.abs(saddleDeltaMm))}</span> ${t("rRetest")}`);
+    const absMm = Math.abs(Math.round(saddleDeltaMm));
+    recLines.push(`${dir} ${t("rSaddleH")} <span class="k">${absMm} mm</span> ${t("rRetest")}`);
   } else { recLines.push(t("rSaddleHNA")); }
 
   if (kopsPx != null) {
     if (pxPerMm) {
       const dir = foreAftDeltaMm > 0 ? t("rSaddleFA_fwd") : foreAftDeltaMm < 0 ? t("rSaddleFA_back") : t("rSaddleFA_keep");
-      recLines.push(`${dir} <span class="k">${mmOrNA(Math.abs(foreAftDeltaMm))}</span> ${t("rSaddleFA_kops")}`);
+      const absMm = Math.abs(Math.round(foreAftDeltaMm));
+      recLines.push(`${dir} <span class="k">${absMm} mm</span> ${t("rSaddleFA_kops")}`);
     } else { recLines.push(t("rSaddleFA_noScale")); }
   } else { recLines.push(t("rSaddleFA_na")); }
 
   if (stemDeltaMm != null) {
     if (stemDeltaMm === 0) recLines.push(t("rStem_ok"));
-    else if (stemDeltaMm < 0) recLines.push(`${t("rStem_shorter")} <span class="k">${Math.abs(stemDeltaMm)} ${t("rStem_mm_shorter")}</span> ${t("rStem_elbows_open")}`);
-    else recLines.push(`${t("rStem_longer")} <span class="k">${stemDeltaMm} ${t("rStem_mm_longer")}</span> ${t("rStem_elbows_closed")}`);
+    else if (stemDeltaMm < 0) recLines.push(`${t("rStem_shorter")} <span class="k">${Math.abs(stemDeltaMm)} mm</span> ${t("rStem_elbows_open")}`);
+    else recLines.push(`${t("rStem_longer")} <span class="k">${stemDeltaMm} mm</span> ${t("rStem_elbows_closed")}`);
   }
   blocks.push(buildResultBlock(t("rRecs"), recLines));
 
@@ -889,8 +891,9 @@ btnAnalyze.addEventListener("click", async () => {
 });
 
 // ---- Result builders ----
-function buildResultBlock(title, lines) {
-  return `<div class="result-section"><h4>${title}</h4>${lines.map(l => `<div class="result-line">${l}</div>`).join("")}</div>`;
+function buildResultBlock(title, lines, isError = false) {
+  const cls = isError ? ' class="error"' : '';
+  return `<div class="result-section"><h4>${title}</h4>${lines.map(l => `<div class="result-line${isError ? ' error' : ''}">${l}</div>`).join('')}</div>`;
 }
 
 function buildMetricGrid(items) {
