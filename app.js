@@ -784,18 +784,44 @@ btnAnalyze.addEventListener("click", async () => {
   }
 
   // Stats
-  const kneeAngles = frames.map(f => f.kneeAng).filter(x => x != null);
+  const kneeAngles = [];
+  const ankleXs = [];
+  let torsoSum = 0, torsoCount = 0;
+  let hipSum = 0, hipCount = 0;
+  let elbowSum = 0, elbowCount = 0;
+
+  for (let i = 0; i < frames.length; i++) {
+    const f = frames[i];
+    if (f.kneeAng != null) kneeAngles.push(f.kneeAng);
+    ankleXs.push(f.ankleX);
+    if (f.torsoAng != null) { torsoSum += f.torsoAng; torsoCount++; }
+    if (f.hipAng != null) { hipSum += f.hipAng; hipCount++; }
+    if (f.elbowAng != null) { elbowSum += f.elbowAng; elbowCount++; }
+  }
+
   const kneeP90 = percentile(kneeAngles, 0.90);
-  const kneeBDC = mean(frames.filter(f => f.kneeAng != null && f.kneeAng >= kneeP90).map(f => f.kneeAng));
-
-  const ankleXs = frames.map(f => f.ankleX);
   const ankleX95 = percentile(ankleXs, 0.95);
-  const threeFrames = frames.filter(f => f.ankleX >= ankleX95);
-  const kopsPx = threeFrames.length ? mean(threeFrames.map(f => (f.kneeX - f.ankleX) * overlay.width)) : null;
 
-  const torsoAvg = mean(frames.map(f => f.torsoAng).filter(x => x != null));
-  const hipAvg = mean(frames.map(f => f.hipAng).filter(x => x != null));
-  const elbowAvg = mean(frames.map(f => f.elbowAng).filter(x => x != null));
+  let kneeBDCSum = 0, kneeBDCCount = 0;
+  let kopsSum = 0, kopsCount = 0;
+
+  for (let i = 0; i < frames.length; i++) {
+    const f = frames[i];
+    if (f.kneeAng != null && f.kneeAng >= kneeP90) {
+      kneeBDCSum += f.kneeAng;
+      kneeBDCCount++;
+    }
+    if (f.ankleX >= ankleX95) {
+      kopsSum += (f.kneeX - f.ankleX) * overlay.width;
+      kopsCount++;
+    }
+  }
+
+  const kneeBDC = kneeBDCCount ? kneeBDCSum / kneeBDCCount : null;
+  const kopsPx = kopsCount ? kopsSum / kopsCount : null;
+  const torsoAvg = torsoCount ? torsoSum / torsoCount : null;
+  const hipAvg = hipCount ? hipSum / hipCount : null;
+  const elbowAvg = elbowCount ? elbowSum / elbowCount : null;
 
   const targetKneeBDC = 145;
   let saddleDeltaMm = kneeBDC != null ? clamp((targetKneeBDC - kneeBDC) * 2.5, -20, 20) : null;
