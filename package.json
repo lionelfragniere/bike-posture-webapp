@@ -1,0 +1,9 @@
+{
+  "name": "bike-posture-checker",
+  "version": "1.0.0",
+  "description": "Bike Posture Checker",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
