@@ -933,3 +933,10 @@ el("btnSaveTxt")?.addEventListener("click", () => {
 // ---- Init ----
 updateCalibrationUI();
 setStatus("statusIdle");
+
+// ---- Exports for testing ----
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    torsoAngle
+  };
+}
