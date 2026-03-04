@@ -1062,11 +1062,11 @@
       en: {
         pageTitle: "Bike Posture Checker", appTitle: "Bike Posture Checker", appSub: "AI-powered road fit analysis",
         step1Label: "Upload", step2Label: "Calibrate", step3Label: "Analyse", step4Label: "Results",
-        hint1: "Record a <strong>side-view video</strong> of yourself cycling. Keep your full body in frame, use a stable camera, and aim for a 20–40 second clip. Best format: <strong>MP4 (H.264)</strong>. <strong>Portrait orientation works best</strong> — stand beside your bike so the full profile fits. No home trainer? Stand near a wall and do <strong>back-pedalling</strong> to simulate the motion.",
-        hint2: "Calibrate so the app knows the real scale of your video. <strong>Pause on a frame</strong> where a known object (e.g. your wheel) is clearly visible, then pick 2 points at its extremities and enter the real distance.",
-        hint2b: "Calibration is <strong>optional</strong> but required for millimetre saddle fore-aft recommendations. Knee angle suggestions always work.",
+        hint1: "Record a side-view video of yourself cycling. Keep your full body in frame, use a stable camera, and aim for a 20–40 second clip. Best format: MP4 (H.264). Portrait orientation works best — stand beside your bike so the full profile fits. No home trainer? Stand near a wall and do back-pedalling to simulate the motion.",
+        hint2: "Calibrate so the app knows the real scale of your video. Pause on a frame where a known object (e.g. your wheel) is clearly visible, then pick 2 points at its extremities and enter the real distance.",
+        hint2b: "Calibration is optional but required for millimetre saddle fore-aft recommendations. Knee angle suggestions always work.",
         hint3: "The AI will scan your video frame by frame, detect your body joints, and measure your cycling angles. This can take 30–90 seconds depending on video length.",
-        hint3b: "While waiting: ensure the video shows a <strong>true side view</strong> (camera perpendicular to your bike), full body visible, and good lighting.",
+        hint3b: "While waiting: ensure the video shows a true side view (camera perpendicular to your bike), full body visible, and good lighting.",
         hint4: "Analysis complete! Review your angles and recommendations in the right panel. Enable the overlay to see your skeleton annotated directly on the video.",
         uploadLabel: "Click or drag a video here", uploadHint: "MP4, MOV, AVI · max 2 GB",
         btnLoad: "Load video →", btnReset: "Reset", btnGrab: "⏸ Grab calibration frame", btnPick: "🎯 Pick 2 points",
@@ -1108,11 +1108,11 @@
       fr: {
         pageTitle: "Analyseur Posture Vélo", appTitle: "Analyseur Posture Vélo", appSub: "Analyse de position par IA",
         step1Label: "Charger", step2Label: "Calibrer", step3Label: "Analyser", step4Label: "Résultats",
-        hint1: "Enregistrez une <strong>vidéo de profil</strong> de vous en train de pédaler. Gardez tout le corps dans le cadre, utilisez une caméra stable, visez 20–40 secondes. Format recommandé : <strong>MP4 (H.264)</strong>. <strong>Le format portrait est idéal</strong> — placez-vous de côté. Pas de home trainer ? Appuyez-vous contre un mur et faites du <strong>pédalage arrière</strong> pour simuler le mouvement.",
-        hint2: "Calibrez afin que l'application connaisse l'échelle réelle de votre vidéo. <strong>Mettez en pause sur une image</strong> où un objet connu (ex. votre roue) est bien visible, choisissez 2 points aux extrémités, puis saisissez la distance réelle.",
-        hint2b: "La calibration est <strong>facultative</strong> mais nécessaire pour les recommandations millimètre avant/arrière de selle. Les suggestions d'angle de genou fonctionnent toujours.",
+        hint1: "Enregistrez une vidéo de profil de vous en train de pédaler. Gardez tout le corps dans le cadre, utilisez une caméra stable, visez 20–40 secondes. Format recommandé : MP4 (H.264). Le format portrait est idéal — placez-vous de côté. Pas de home trainer ? Appuyez-vous contre un mur et faites du pédalage arrière pour simuler le mouvement.",
+        hint2: "Calibrez afin que l'application connaisse l'échelle réelle de votre vidéo. Mettez en pause sur une image où un objet connu (ex. votre roue) est bien visible, choisissez 2 points aux extrémités, puis saisissez la distance réelle.",
+        hint2b: "La calibration est facultative mais nécessaire pour les recommandations millimètre avant/arrière de selle. Les suggestions d'angle de genou fonctionnent toujours.",
         hint3: "L'IA va analyser votre vidéo image par image, détecter vos articulations et mesurer vos angles de pédalage. Cela peut prendre 30–90 secondes selon la durée de la vidéo.",
-        hint3b: "En attendant : vérifiez que la vidéo montre un <strong>vrai profil</strong> (caméra perpendiculaire au vélo), corps entier visible, bonne luminosité.",
+        hint3b: "En attendant : vérifiez que la vidéo montre un vrai profil (caméra perpendiculaire au vélo), corps entier visible, bonne luminosité.",
         hint4: "Analyse terminée ! Consultez vos angles et recommandations dans le panneau de droite. Activez l'incrustation pour voir votre squelette annoté sur la vidéo.",
         uploadLabel: "Cliquez ou déposez une vidéo ici", uploadHint: "MP4, MOV, AVI · max 2 Go",
         btnLoad: "Charger la vidéo →", btnReset: "Réinitialiser", btnGrab: "⏸ Saisir l'image de calibration", btnPick: "🎯 Choisir 2 points",
@@ -1179,7 +1179,7 @@
             el.textContent = t(statusKey) + (extra ? " " + extra : "");
           }
         } else {
-          el.innerHTML = val;
+          el.textContent = val;
         }
       }
     }
@@ -1258,10 +1258,7 @@
       <div id="stepContent1" class="fade-in">
         <div class="hint-box" style="margin-bottom:16px; flex-shrink:0;">
           <span class="hint-icon">💡</span>
-          <span data-i18n="hint1">Record a <strong>side-view video</strong> of yourself cycling. Keep your full body in
-            frame, use a stable camera, and aim for a 20–40 second clip. Best format: <strong>MP4 (H.264)</strong>.
-            <strong>Portrait orientation works best</strong> — stand beside your bike so the full profile fits. No home
-            trainer? Stand near a wall and do <strong>back-pedalling</strong> to simulate the motion.</span>
+          <span data-i18n="hint1">Record a side-view video of yourself cycling. Keep your full body in frame, use a stable camera, and aim for a 20–40 second clip. Best format: MP4 (H.264). Portrait orientation works best — stand beside your bike so the full profile fits. No home trainer? Stand near a wall and do back-pedalling to simulate the motion.</span>
         </div>
 
         <!-- Upload + image side by side -->
@@ -1319,9 +1316,7 @@
       <div id="stepContent2" style="display:none;" class="fade-in">
         <div class="hint-box" style="margin-bottom:16px; flex-shrink:0;">
           <span class="hint-icon">📏</span>
-          <span data-i18n="hint2">Calibrate so the app knows the real scale of your video. <strong>Pause on a
-              frame</strong> where a known object (e.g. your wheel) is clearly visible, then pick 2 points at its
-            extremities and enter the real distance.</span>
+          <span data-i18n="hint2">Calibrate so the app knows the real scale of your video. Pause on a frame where a known object (e.g. your wheel) is clearly visible, then pick 2 points at its extremities and enter the real distance.</span>
         </div>
 
         <!-- Two-column layout: video left, calib controls right -->
@@ -1396,9 +1391,7 @@
 
             <div class="hint-box warn" style="margin-top:12px;">
               <span class="hint-icon">⚠️</span>
-              <span data-i18n="hint2b">Calibration is <strong>optional</strong> but required for millimetre saddle
-                fore-aft
-                recommendations. Knee angle suggestions always work.</span>
+              <span data-i18n="hint2b">Calibration is optional but required for millimetre saddle fore-aft recommendations. Knee angle suggestions always work.</span>
             </div>
 
             <div class="btn-row" style="margin-top:14px;">
@@ -1431,8 +1424,7 @@
 
         <div class="hint-box warn" style="margin-top:14px;" id="analysisTips">
           <span class="hint-icon">💡</span>
-          <span data-i18n="hint3b">While waiting: ensure the video shows a <strong>true side view</strong> (camera
-            perpendicular to your bike), full body visible, and good lighting.</span>
+          <span data-i18n="hint3b">While waiting: ensure the video shows a true side view (camera perpendicular to your bike), full body visible, and good lighting.</span>
         </div>
       </div>
 
