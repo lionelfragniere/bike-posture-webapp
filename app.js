@@ -356,15 +356,15 @@ function drawFitOverlay(last) {
 function updatePickStatusText() {
   if (!pickStatusText) return;
   if (points.length === 0) {
-    pickStatusText.innerHTML = t("pickWaiting");
+    pickStatusText.textContent = t("pickWaiting");
     pickDot1.classList.remove("set"); pickDot1.textContent = "P1";
     pickDot2.classList.remove("set"); pickDot2.textContent = "P2";
   } else if (points.length === 1) {
-    pickStatusText.innerHTML = t("pickPoint2");
+    pickStatusText.textContent = t("pickPoint2");
     pickDot1.classList.add("set"); pickDot1.textContent = "✓";
     pickDot2.classList.remove("set"); pickDot2.textContent = "P2";
   } else {
-    pickStatusText.innerHTML = t("pickDone");
+    pickStatusText.textContent = t("pickDone");
     pickDot1.classList.add("set"); pickDot1.textContent = "✓";
     pickDot2.classList.add("set"); pickDot2.textContent = "✓";
   }
@@ -505,7 +505,8 @@ btnReset.addEventListener("click", () => {
 
   pxDistEl.textContent = "—";
   scaleEl.textContent = "—";
-  resultsEl.innerHTML = `<span style="color:var(--text3);">${t("resultsWait")}</span>`;
+  resultsEl.textContent = t("resultsWait");
+  resultsEl.style.color = "var(--text3)";
   setStatus("statusIdle");
 
   btnLoad.disabled = !(fileEl.files?.[0]);
@@ -704,7 +705,8 @@ btnAnalyze.addEventListener("click", async () => {
   const stepSec = 0.10;
   const maxSec = Math.min(video.duration, 90);
   setStatus("statusAnalyzing");
-  resultsEl.innerHTML = `<span style="color:var(--text3);">${t("analyzing")}</span>`;
+  resultsEl.textContent = t("analyzing");
+  resultsEl.style.color = "var(--text3)";
   btnCopy.disabled = true;
 
   const frames = [];
@@ -774,10 +776,10 @@ btnAnalyze.addEventListener("click", async () => {
 
   if (frames.length < 30) {
     setStatus("statusNotEnough");
-    resultsEl.innerHTML = buildResultBlock(t("rProblem"), [
+    resultsEl.replaceChildren(buildResultBlock(t("rProblem"), [
       `${frames.length} ${t("rNotEnough")}`,
       `${t("rGoodRate")} ${goodPct.toFixed(1)}%`
-    ], true);
+    ], true));
     running = false;
     btnAnalyze.disabled = false;
     return;
@@ -809,8 +811,19 @@ btnAnalyze.addEventListener("click", async () => {
 
   // Build results
   const blocks = [];
+
+  const createLineWithSpan = (prefix, val, suffix) => {
+    const frag = document.createDocumentFragment();
+    frag.append(prefix);
+    const span = document.createElement("span");
+    span.className = "k";
+    span.textContent = val;
+    frag.append(span, suffix);
+    return frag;
+  };
+
   blocks.push(buildResultBlock(t("rQuality"), [
-    `${t("rFrames")}: ${total} &nbsp;·&nbsp; ${t("rGood")}: ${good} (${goodPct.toFixed(1)}%)`,
+    `${t("rFrames")}: ${total} · ${t("rGood")}: ${good} (${goodPct.toFixed(1)}%)`,
     t("rSide")
   ]));
 
@@ -825,26 +838,31 @@ btnAnalyze.addEventListener("click", async () => {
   if (kneeBDC != null) {
     const dir = saddleDeltaMm > 0 ? t("rRaise") : saddleDeltaMm < 0 ? t("rLower") : t("rKeep");
     const absMm = Math.abs(Math.round(saddleDeltaMm));
-    recLines.push(`${dir} ${t("rSaddleH")} <span class="k">${absMm} mm</span> ${t("rRetest")}`);
+    recLines.push(createLineWithSpan(`${dir} ${t("rSaddleH")} `, `${absMm} mm`, ` ${t("rRetest")}`));
   } else { recLines.push(t("rSaddleHNA")); }
 
   if (kopsPx != null) {
     if (pxPerMm) {
       const dir = foreAftDeltaMm > 0 ? t("rSaddleFA_fwd") : foreAftDeltaMm < 0 ? t("rSaddleFA_back") : t("rSaddleFA_keep");
       const absMm = Math.abs(Math.round(foreAftDeltaMm));
-      recLines.push(`${dir} <span class="k">${absMm} mm</span> ${t("rSaddleFA_kops")}`);
+      recLines.push(createLineWithSpan(`${dir} `, `${absMm} mm`, ` ${t("rSaddleFA_kops")}`));
     } else { recLines.push(t("rSaddleFA_noScale")); }
   } else { recLines.push(t("rSaddleFA_na")); }
 
   if (stemDeltaMm != null) {
     if (stemDeltaMm === 0) recLines.push(t("rStem_ok"));
-    else if (stemDeltaMm < 0) recLines.push(`${t("rStem_shorter")} <span class="k">${Math.abs(stemDeltaMm)} mm</span> ${t("rStem_elbows_open")}`);
-    else recLines.push(`${t("rStem_longer")} <span class="k">${stemDeltaMm} mm</span> ${t("rStem_elbows_closed")}`);
+    else if (stemDeltaMm < 0) recLines.push(createLineWithSpan(`${t("rStem_shorter")} `, `${Math.abs(stemDeltaMm)} mm`, ` ${t("rStem_elbows_open")}`));
+    else recLines.push(createLineWithSpan(`${t("rStem_longer")} `, `${stemDeltaMm} mm`, ` ${t("rStem_elbows_closed")}`));
   }
   blocks.push(buildResultBlock(t("rRecs"), recLines));
 
   if (warnings.length) {
-    blocks.push(buildResultBlock(t("rWarnings"), warnings.map(w => `<span style="color:var(--amber);">⚠ ${w}</span>`)));
+    blocks.push(buildResultBlock(t("rWarnings"), warnings.map(w => {
+      const span = document.createElement("span");
+      span.style.color = "var(--amber)";
+      span.textContent = `⚠ ${w}`;
+      return span;
+    })));
   }
 
   // Clipboard
@@ -866,7 +884,7 @@ btnAnalyze.addEventListener("click", async () => {
     ...(warnings.length ? [t("clipWarnings"), ...warnings.map(w => "- " + w)] : [])
   ].join("\n");
 
-  resultsEl.innerHTML = blocks.join("");
+  resultsEl.replaceChildren(...blocks);
   btnCopy.disabled = false;
   const saveTxtBtn = el("btnSaveTxt");
   if (saveTxtBtn) saveTxtBtn.disabled = false;
@@ -892,18 +910,48 @@ btnAnalyze.addEventListener("click", async () => {
 
 // ---- Result builders ----
 function buildResultBlock(title, lines, isError = false) {
-  const cls = isError ? ' class="error"' : '';
-  return `<div class="result-section"><h4>${title}</h4>${lines.map(l => `<div class="result-line${isError ? ' error' : ''}">${l}</div>`).join('')}</div>`;
+  const section = document.createElement("div");
+  section.className = "result-section";
+  const h4 = document.createElement("h4");
+  h4.textContent = title;
+  section.appendChild(h4);
+
+  for (const line of lines) {
+    const div = document.createElement("div");
+    div.className = "result-line" + (isError ? " error" : "");
+    if (typeof line === "string") {
+      div.textContent = line;
+    } else {
+      div.appendChild(line);
+    }
+    section.appendChild(div);
+  }
+  return section;
 }
 
 function buildMetricGrid(items) {
-  const cards = items.map(({ label, val, cls, note }) =>
-    `<div class="metric-card ${cls ?? ""}">
-      <div class="metric-label">${label}</div>
-      <div class="metric-value ${cls ?? "neutral"}">${val}</div>
-      <div class="metric-note">${note}</div>
-    </div>`).join("");
-  return `<div class="metric-grid">${cards}</div>`;
+  const grid = document.createElement("div");
+  grid.className = "metric-grid";
+  for (const { label, val, cls, note } of items) {
+    const card = document.createElement("div");
+    card.className = `metric-card ${cls ?? ""}`;
+
+    const labelEl = document.createElement("div");
+    labelEl.className = "metric-label";
+    labelEl.textContent = label;
+
+    const valEl = document.createElement("div");
+    valEl.className = `metric-value ${cls ?? "neutral"}`;
+    valEl.textContent = val;
+
+    const noteEl = document.createElement("div");
+    noteEl.className = "metric-note";
+    noteEl.textContent = note;
+
+    card.append(labelEl, valEl, noteEl);
+    grid.appendChild(card);
+  }
+  return grid;
 }
 
 // ---- Wire up language + step tabs ----
